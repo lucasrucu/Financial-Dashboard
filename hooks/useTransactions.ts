@@ -29,6 +29,14 @@ async function fetchTransactions(filters: TransactionFilters) {
     params.set("accountId", filters.accountId);
   }
 
+  if (filters.sortBy) {
+    params.set("sortBy", filters.sortBy);
+  }
+
+  if (filters.sortOrder) {
+    params.set("sortOrder", filters.sortOrder);
+  }
+
   if (filters.page) {
     params.set("page", String(filters.page));
   }

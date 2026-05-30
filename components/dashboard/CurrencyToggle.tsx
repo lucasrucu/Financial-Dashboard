@@ -8,16 +8,18 @@ export function CurrencyToggle() {
   const { currency, setCurrency } = useCurrency();
 
   return (
-    <div className="flex items-center rounded-lg border border-slate-800 bg-slate-900 p-1">
+    <div className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5">
       {(["USD", "PEN"] as const).map((code) => (
         <Button
           key={code}
           type="button"
           size="sm"
-          variant={currency === code ? "default" : "ghost"}
+          variant="ghost"
           className={cn(
-            "h-7 px-3 text-xs",
-            currency === code ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+            "h-7 rounded-md px-3 text-xs shadow-none",
+            currency === code
+              ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
           )}
           onClick={() => setCurrency(code)}
         >

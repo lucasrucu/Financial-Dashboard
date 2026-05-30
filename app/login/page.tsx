@@ -75,7 +75,7 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md border-slate-800 bg-slate-900/50">
+    <Card className="w-full max-w-md border-border bg-card">
       <CardHeader className="text-center">
         <CardTitle>Financial Dashboard</CardTitle>
         <CardDescription>Sign in to view your finances</CardDescription>
@@ -97,7 +97,7 @@ function LoginForm() {
         <Button
           type="button"
           variant="outline"
-          className="w-full border-slate-700"
+          className="w-full border-border"
           onClick={signInWithPasskey}
           disabled={loading !== null}
         >
@@ -122,7 +122,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Suspense
         fallback={
           <div className="flex items-center justify-center py-12">

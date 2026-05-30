@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Pencil, Check, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,7 @@ function GoalEditor({
   );
 }
 
-export function GoalCard({ goal }: { goal: Goal }) {
+export const GoalCard = memo(function GoalCard({ goal }: { goal: Goal }) {
   const { formatAmount } = useCurrency();
   const { updateGoal } = useGoals();
   const [isEditing, setIsEditing] = useState(false);
@@ -111,7 +111,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
     goal.target_usd === 0 ? 0 : Math.min((goal.saved_usd / goal.target_usd) * 100, 100);
 
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-border bg-card">
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div>
           <CardTitle className="text-base">{goal.name}</CardTitle>
@@ -156,7 +156,7 @@ export function GoalCard({ goal }: { goal: Goal }) {
       </CardContent>
     </Card>
   );
-}
+});
 
 export function GoalCards() {
   const { goals, isLoading, error } = useGoals();
@@ -165,7 +165,7 @@ export function GoalCards() {
     return (
       <div className="grid gap-4 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="border-slate-800 bg-slate-900/50">
+          <Card key={i} className="border-border bg-card">
             <CardHeader className="flex flex-row items-start justify-between gap-2">
               <div className="space-y-1.5">
                 <Skeleton className="h-5 w-32" />

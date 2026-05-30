@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { Loader2, Sparkles, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,20 +18,7 @@ export function AiInsightPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={() => analyze(false)} disabled={isLoading}>
-          {isLoading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <RefreshCw className="size-4" />
-          )}
-          Refresh insights
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => analyze(true)}
-          disabled={isLoading}
-        >
+        <Button type="button" onClick={() => analyze(true)} disabled={isLoading}>
           {isLoading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -53,7 +40,7 @@ export function AiInsightPanel() {
       </div>
 
       {error ? (
-        <Card className="border-negative/40 bg-slate-900/50">
+        <Card className="border-negative/40 bg-card">
           <CardContent className="py-6 text-sm text-negative">
             {error instanceof Error ? error.message : "Something went wrong."}
           </CardContent>
@@ -62,7 +49,7 @@ export function AiInsightPanel() {
 
       {insight?.insight ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="border-slate-800 bg-slate-900/50 lg:col-span-2">
+          <Card className="border-border bg-card lg:col-span-2">
             <CardHeader>
               <CardTitle>The Roast</CardTitle>
               <CardDescription>{insight.period}</CardDescription>
@@ -72,14 +59,14 @@ export function AiInsightPanel() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-positive">Wins</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
                 {insight.insight.wins.map((item) => (
-                  <li key={item} className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <li key={item} className="rounded-lg bg-background/60 px-3 py-2">
                     {item}
                   </li>
                 ))}
@@ -87,14 +74,14 @@ export function AiInsightPanel() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle>Action Items</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
                 {insight.insight.actions.map((item) => (
-                  <li key={item} className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <li key={item} className="rounded-lg bg-background/60 px-3 py-2">
                     {item}
                   </li>
                 ))}
@@ -102,7 +89,7 @@ export function AiInsightPanel() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-negative">Flagged</CardTitle>
             </CardHeader>
@@ -110,7 +97,7 @@ export function AiInsightPanel() {
               <ul className="space-y-2 text-sm">
                 {insight.insight.flagged.length ? (
                   insight.insight.flagged.map((item) => (
-                    <li key={item} className="rounded-lg bg-slate-950/60 px-3 py-2">
+                    <li key={item} className="rounded-lg bg-background/60 px-3 py-2">
                       {item}
                     </li>
                   ))
@@ -121,14 +108,14 @@ export function AiInsightPanel() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle>Goal Allocations</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
                 {Object.entries(insight.insight.allocations).map(([goal, advice]) => (
-                  <li key={goal} className="rounded-lg bg-slate-950/60 px-3 py-2">
+                  <li key={goal} className="rounded-lg bg-background/60 px-3 py-2">
                     <p className="font-medium">{goal}</p>
                     <p className="text-muted-foreground">{advice}</p>
                   </li>
@@ -138,9 +125,9 @@ export function AiInsightPanel() {
           </Card>
         </div>
       ) : !isLoading && !error ? (
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-border bg-card">
           <CardContent className="py-10 text-center text-muted-foreground">
-            Refresh for cached insights or hit Roast for a fresh (loving) analysis.
+            Press Roast my finances to generate insights.
           </CardContent>
         </Card>
       ) : null}

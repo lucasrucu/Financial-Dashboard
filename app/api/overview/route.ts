@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
 import {
-  getCategoryBreakdown,
+  getCategoryData,
   getMonthlySpendingComparison,
   getNetWorth,
-  getTopCategories,
 } from "@/lib/aggregates";
 
 export const dynamic = "force-dynamic";
@@ -19,12 +18,11 @@ export async function GET() {
 
     const { supabase, user } = auth;
 
-    const [netWorth, spendingComparison, topCategories, categoryBreakdown] =
+    const [netWorth, spendingComparison, { topCategories, categoryBreakdown }] =
       await Promise.all([
         getNetWorth(supabase),
         getMonthlySpendingComparison(supabase),
-        getTopCategories(supabase, user.id, 3),
-        getCategoryBreakdown(supabase, user.id),
+        getCategoryData(supabase, user.id, 3),
       ]);
 
     return NextResponse.json({

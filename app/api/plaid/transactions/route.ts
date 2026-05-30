@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
+import type { TransactionSortBy } from "@/types/transaction";
+
+const SORT_COLUMNS: TransactionSortBy[] = ["date", "name", "amount_usd"];
+
+function escapeIlikePattern(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/,/g, "\\,");
+}
 
 export async function GET(request: Request) {
   try {
@@ -9,13 +16,19 @@ export async function GET(request: Request) {
       return auth.unauthorized;
     }
 
-    const { supabase } = auth;
+    const { supabase, user } = auth;
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate") ?? undefined;
     const endDate = searchParams.get("endDate") ?? undefined;
     const categoryId = searchParams.get("categoryId") ?? undefined;
     const search = searchParams.get("search")?.trim() ?? undefined;
     const accountId = searchParams.get("accountId") ?? undefined;
+    const sortByParam = searchParams.get("sortBy") ?? "date";
+    const sortOrderParam = searchParams.get("sortOrder") ?? "desc";
+    const sortBy = SORT_COLUMNS.includes(sortByParam as TransactionSortBy)
+      ? (sortByParam as TransactionSortBy)
+      : "date";
+    const sortOrder = sortOrderParam === "asc" ? "asc" : "desc";
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const pageSize = Math.min(
       100,
@@ -27,7 +40,7 @@ export async function GET(request: Request) {
     let query = supabase
       .from("transactions")
       .select("*, accounts(name, mask)", { count: "exact" })
-      .order("date", { ascending: false });
+      .order(sortBy, { ascending: sortOrder === "asc", nullsFirst: false });
 
     if (startDate) {
       query = query.gte("date", startDate);
@@ -46,7 +59,35 @@ export async function GET(request: Request) {
     }
 
     if (search) {
-      query = query.ilike("name", `%${search}%`);
+      const pattern = `%${escapeIlikePattern(search)}%`;
+      const orParts = [`name.ilike.${pattern}`];
+
+      const [{ data: matchingCategories }, { data: matchingAccounts }] =
+        await Promise.all([
+          supabase
+            .from("categories")
+            .select("id")
+            .eq("user_id", user.id)
+            .ilike("label", pattern),
+          supabase
+            .from("accounts")
+            .select("id")
+            .eq("user_id", user.id)
+            .or(`name.ilike.${pattern},mask.ilike.${pattern}`),
+        ]);
+
+      const categoryIds = matchingCategories?.map((row) => row.id) ?? [];
+      const accountIds = matchingAccounts?.map((row) => row.id) ?? [];
+
+      if (categoryIds.length) {
+        orParts.push(`category_id.in.(${categoryIds.join(",")})`);
+      }
+
+      if (accountIds.length) {
+        orParts.push(`account_id.in.(${accountIds.join(",")})`);
+      }
+
+      query = query.or(orParts.join(","));
     }
 
     query = query.range(from, to);

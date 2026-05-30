@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import {
 } from "@/hooks/useCategories";
 import type { Category } from "@/types/category";
 
-function CategoryRow({ category }: { category: Category }) {
+const CategoryRow = memo(function CategoryRow({ category }: { category: Category }) {
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
   const [editing, setEditing] = useState(false);
@@ -24,7 +24,7 @@ function CategoryRow({ category }: { category: Category }) {
   const [color, setColor] = useState(category.color);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-800 bg-slate-950/60 px-4 py-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-background/60 px-4 py-3">
       <span
         className="size-3 shrink-0 rounded-full"
         style={{ backgroundColor: category.color }}
@@ -115,7 +115,7 @@ function CategoryRow({ category }: { category: Category }) {
       )}
     </div>
   );
-}
+});
 
 export function CategoryList() {
   const { data: categories, isLoading, error } = useCategories();
@@ -148,7 +148,7 @@ export function CategoryForm() {
 
   return (
     <form
-      className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-800 bg-slate-900/50 p-4"
+      className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-4"
       onSubmit={(event) => {
         event.preventDefault();
         if (!label.trim()) {

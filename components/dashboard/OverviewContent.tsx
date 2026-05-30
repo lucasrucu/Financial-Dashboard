@@ -1,11 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
 
 import { BankAccountCard } from "@/components/dashboard/BankAccountCard";
 import { GoalCards } from "@/components/dashboard/GoalCard";
-import { SpendingChart } from "@/components/dashboard/SpendingChart";
 import {
   Card,
   CardContent,
@@ -16,6 +16,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/useCurrency";
 import { formatPercent } from "@/lib/utils";
+
+const SpendingChart = dynamic(
+  () => import("@/components/dashboard/SpendingChart").then((m) => m.SpendingChart),
+  { ssr: false, loading: () => <Skeleton className="h-72 w-full rounded-lg" /> }
+);
 
 interface OverviewStats {
   netWorth: number;
@@ -57,13 +62,14 @@ export function OverviewContent() {
 
   const spending = data?.spendingComparison;
   const isSpendingUp = (spending?.delta ?? 0) > 0;
+  const maxCategoryAmount = data?.topCategories[0]?.amount ?? 1;
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 lg:grid-cols-3">
         <BankAccountCard />
 
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wallet className="size-4 text-primary" />
@@ -82,7 +88,7 @@ export function OverviewContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle>Monthly Spending</CardTitle>
             <CardDescription>This month vs last month</CardDescription>
@@ -124,7 +130,7 @@ export function OverviewContent() {
         </Card>
       </div>
 
-      <Card className="border-slate-800 bg-slate-900/50">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle>Top Categories</CardTitle>
           <CardDescription>Where your money went this month</CardDescription>
@@ -146,8 +152,7 @@ export function OverviewContent() {
             <p className="text-sm text-muted-foreground">No category data yet.</p>
           ) : (
             data.topCategories.map((category) => {
-              const maxAmount = data.topCategories[0]?.amount ?? 1;
-              const width = `${(category.amount / maxAmount) * 100}%`;
+              const width = `${(category.amount / maxCategoryAmount) * 100}%`;
 
               return (
                 <div key={category.categoryId} className="space-y-1">
@@ -157,7 +162,7 @@ export function OverviewContent() {
                       {formatAmount(category.amount)}
                     </span>
                   </div>
-                  <div className="h-2 rounded-full bg-slate-800">
+                  <div className="h-2 rounded-full bg-muted">
                     <div
                       className="h-2 rounded-full"
                       style={{ width, backgroundColor: category.color }}

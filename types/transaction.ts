@@ -15,12 +15,17 @@ export interface TransactionRow extends Transaction {
   account_mask: string | null;
 }
 
+export type TransactionSortBy = "date" | "name" | "amount_usd";
+export type TransactionSortOrder = "asc" | "desc";
+
 export interface TransactionFilters {
   startDate?: string;
   endDate?: string;
   categoryId?: string;
   search?: string;
   accountId?: string;
+  sortBy?: TransactionSortBy;
+  sortOrder?: TransactionSortOrder;
   page?: number;
   pageSize?: number;
 }

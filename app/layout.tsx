@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 
 import { Providers } from "@/app/providers";
+import { getThemeBootScript } from "@/lib/themeBootScript";
 import { cn } from "@/lib/utils";
 
 import "./globals.css";
@@ -29,9 +30,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("dark", geistSans.variable)} suppressHydrationWarning>
+    <html lang="en" className={cn(geistSans.variable)} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: getThemeBootScript() }}
+        />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-slate-950 antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-background antialiased`}
       >
         <Providers>{children}</Providers>
       </body>

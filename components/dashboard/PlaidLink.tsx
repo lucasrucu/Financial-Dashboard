@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlaidLink } from "react-plaid-link";
 
 import { Button } from "@/components/ui/button";
@@ -37,15 +37,20 @@ interface PlaidLinkProps {
 export function PlaidLink({ onSuccess, onError, children, className }: PlaidLinkProps) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
 
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
+
   useEffect(() => {
     fetchLinkToken()
       .then((data) => setLinkToken(data.link_token))
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : "Failed to initialize Plaid";
-        onError?.(message);
+        onErrorRef.current?.(message);
         setLinkToken(null);
       });
-  }, [onError]);
+  }, []); // intentionally empty — fires once on mount
 
   const handleSuccess = useCallback(
     async (publicToken: string) => {

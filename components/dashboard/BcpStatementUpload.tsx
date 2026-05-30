@@ -171,7 +171,7 @@ export function BcpStatementUpload() {
   );
 
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle>Import BCP Statement</CardTitle>
         <CardDescription>
@@ -217,7 +217,7 @@ export function BcpStatementUpload() {
         </div>
 
         {preview ? (
-          <div className="space-y-4 rounded-lg border border-slate-800 p-4">
+          <div className="space-y-4 rounded-lg border border-border p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <p className="font-medium">Preview: {preview.accountCode}</p>
@@ -266,7 +266,7 @@ export function BcpStatementUpload() {
               </div>
             ) : null}
 
-            <div className="max-h-96 overflow-auto rounded-md border border-slate-800">
+            <div className="max-h-96 overflow-auto rounded-md border border-border">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -15,7 +15,7 @@ export function PageWrapper({
 }: PageWrapperProps) {
   return (
     <div className={cn("flex flex-1 flex-col", className)}>
-      <div className="border-b border-slate-800 px-4 py-6 md:px-8">
+      <div className="border-b border-border px-4 py-6 md:px-8">
         <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
         {description ? (
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>

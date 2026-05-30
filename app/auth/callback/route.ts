@@ -32,7 +32,8 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      const migrateResponse = await fetch(`${origin}/api/auth/migrate-data`, {
+      // fire-and-forget — migration is best-effort, don't block login
+      void fetch(`${origin}/api/auth/migrate-data`, {
         method: "POST",
         headers: {
           cookie: cookieStore
@@ -41,10 +42,6 @@ export async function GET(request: Request) {
             .join("; "),
         },
       });
-
-      if (!migrateResponse.ok) {
-        console.warn("Data migration after login returned", migrateResponse.status);
-      }
 
       return NextResponse.redirect(`${origin}${next}`);
     }

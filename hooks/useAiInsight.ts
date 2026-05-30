@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAiInsightStore } from "@/stores/aiInsightStore";
@@ -31,21 +31,18 @@ export function useAiInsight() {
   const queryClient = useQueryClient();
   const stored = useAiInsightStore();
 
-  useEffect(() => {
-    if (stored.insight) {
-      return;
-    }
+  const storedRef = useRef(stored);
+  storedRef.current = stored;
 
+  useEffect(() => {
+    if (storedRef.current.insight) return;
     fetchAiInsight(false)
       .then((data) => {
-        stored.setInsight(data);
+        storedRef.current.setInsight(data);
         queryClient.setQueryData(["ai-insight"], data);
       })
-      .catch(() => {
-        // optional fetch — ignore errors on mount
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      .catch(() => {});
+  }, []); // Zustand store ref is stable — intentionally empty
 
   const mutation = useMutation({
     mutationFn: (force: boolean) => fetchAiInsight(force),

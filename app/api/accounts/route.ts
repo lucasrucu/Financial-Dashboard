@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
 import { enrichAccountsWithEffectiveBalance } from "@/lib/accountBalance";
+import { safeNumber } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -43,9 +44,9 @@ export async function GET() {
       supabase,
       (accounts ?? []).map((account) => ({
         ...account,
-        balance_usd: Number(account.balance_usd),
+        balance_usd: safeNumber(account.balance_usd),
         balance_anchor_usd:
-          account.balance_anchor_usd === null ? null : Number(account.balance_anchor_usd),
+          account.balance_anchor_usd === null ? null : safeNumber(account.balance_anchor_usd),
         balance_anchor_date: account.balance_anchor_date,
       }))
     );

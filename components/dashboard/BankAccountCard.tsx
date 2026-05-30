@@ -229,7 +229,7 @@ export function BankAccountCard() {
   const plaidConnected = data?.plaid_connected ?? Boolean(data?.connected && !data?.bcp_connected);
 
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle>Bank Account</CardTitle>
         <CardDescription>

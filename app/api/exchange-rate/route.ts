@@ -31,56 +31,12 @@ export async function GET() {
       });
     }
 
-    const response = await fetch(buildExchangeRateUrl("USD", "PEN"), {
-      next: { revalidate: 86400 },
-    });
-
-    if (!response.ok) {
-      if (cachedRate) {
-        return NextResponse.json({
-          usd_to_pen: Number(cachedRate.usd_to_pen),
-          fetched_at: cachedRate.fetched_at,
-          cached: true,
-          stale: true,
-        });
-      }
-
-      return NextResponse.json({
-        usd_to_pen: DEFAULT_RATE,
-        fetched_at: new Date().toISOString(),
-        cached: false,
-        fallback: true,
-      });
-    }
-
-    const payload = (await response.json()) as {
-      rates?: { PEN?: number };
-    };
-
-    const usdToPen = payload.rates?.PEN ?? DEFAULT_RATE;
-    const fetchedAt = new Date().toISOString();
-
-    await supabase.from("exchange_rates").insert({
-      usd_to_pen: usdToPen,
-      fetched_at: fetchedAt,
-    });
-
-    return NextResponse.json({
-      usd_to_pen: usdToPen,
-      fetched_at: fetchedAt,
-      cached: false,
-    });
-  } catch (error) {
     try {
-      const auth = await requireUser();
-      if (!auth.unauthorized) {
-        const { data: cachedRate } = await auth.supabase
-          .from("exchange_rates")
-          .select("*")
-          .order("fetched_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      const response = await fetch(buildExchangeRateUrl("USD", "PEN"), {
+        next: { revalidate: 86400 },
+      });
 
+      if (!response.ok) {
         if (cachedRate) {
           return NextResponse.json({
             usd_to_pen: Number(cachedRate.usd_to_pen),
@@ -89,18 +45,53 @@ export async function GET() {
             stale: true,
           });
         }
+        return NextResponse.json({
+          usd_to_pen: DEFAULT_RATE,
+          fetched_at: new Date().toISOString(),
+          cached: false,
+          fallback: true,
+        });
       }
-    } catch {
-      // ignore nested auth errors
-    }
 
+      const payload = (await response.json()) as { rates?: { PEN?: number } };
+      const usdToPen = payload.rates?.PEN ?? DEFAULT_RATE;
+      const fetchedAt = new Date().toISOString();
+      const today = fetchedAt.slice(0, 10);
+
+      // Keep exactly one row per calendar day
+      await supabase
+        .from("exchange_rates")
+        .delete()
+        .gte("fetched_at", today)
+        .lt("fetched_at", `${today}T23:59:59Z`);
+      await supabase
+        .from("exchange_rates")
+        .insert({ usd_to_pen: usdToPen, fetched_at: fetchedAt });
+
+      return NextResponse.json({ usd_to_pen: usdToPen, fetched_at: fetchedAt, cached: false });
+    } catch {
+      if (cachedRate) {
+        return NextResponse.json({
+          usd_to_pen: Number(cachedRate.usd_to_pen),
+          fetched_at: cachedRate.fetched_at,
+          cached: true,
+          stale: true,
+        });
+      }
+      return NextResponse.json({
+        usd_to_pen: DEFAULT_RATE,
+        fetched_at: new Date().toISOString(),
+        cached: false,
+        fallback: true,
+      });
+    }
+  } catch (error) {
     return NextResponse.json({
       usd_to_pen: DEFAULT_RATE,
       fetched_at: new Date().toISOString(),
       cached: false,
       fallback: true,
-      warning:
-        error instanceof Error ? error.message : "Failed to fetch exchange rate",
+      warning: error instanceof Error ? error.message : "Failed to fetch exchange rate",
     });
   }
 }

@@ -87,25 +87,17 @@ export async function getMonthlySpendingComparison(supabase: SupabaseClient) {
   };
 }
 
-export async function getTopCategories(
-  supabase: SupabaseClient,
-  userId: string,
-  limit = 3
-) {
+async function buildCategoryTotals(supabase: SupabaseClient, userId: string) {
   const range = getMonthRange(0);
   const [transactions, categories] = await Promise.all([
     fetchTransactionsInRange(supabase, range.start, range.end),
     seedCategoriesIfEmpty(supabase, userId),
   ]);
   const categoryMap = buildCategoryMap(categories);
-
   const totals = new Map<string, number>();
 
   for (const transaction of transactions) {
-    if (transaction.amount_usd <= 0) {
-      continue;
-    }
-
+    if (transaction.amount_usd <= 0) continue;
     totals.set(
       transaction.category_id,
       (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount_usd)
@@ -119,38 +111,38 @@ export async function getTopCategories(
       color: resolveCategoryColor(categoryId, categoryMap),
       amount,
     }))
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, limit);
+    .sort((a, b) => b.amount - a.amount);
+}
+
+export async function getTopCategories(
+  supabase: SupabaseClient,
+  userId: string,
+  limit = 3
+) {
+  return (await buildCategoryTotals(supabase, userId)).slice(0, limit);
 }
 
 export async function getCategoryBreakdown(supabase: SupabaseClient, userId: string) {
-  const range = getMonthRange(0);
-  const [transactions, categories] = await Promise.all([
-    fetchTransactionsInRange(supabase, range.start, range.end),
-    seedCategoriesIfEmpty(supabase, userId),
-  ]);
-  const categoryMap = buildCategoryMap(categories);
-  const totals = new Map<string, number>();
+  return (await buildCategoryTotals(supabase, userId)).map(
+    ({ categoryId, label, color, amount }) => ({ categoryId, name: label, color, amount })
+  );
+}
 
-  for (const transaction of transactions) {
-    if (transaction.amount_usd <= 0) {
-      continue;
-    }
-
-    totals.set(
-      transaction.category_id,
-      (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount_usd)
-    );
-  }
-
-  return Array.from(totals.entries())
-    .map(([categoryId, amount]) => ({
+export async function getCategoryData(
+  supabase: SupabaseClient,
+  userId: string,
+  topLimit = 3
+) {
+  const sorted = await buildCategoryTotals(supabase, userId);
+  return {
+    topCategories: sorted.slice(0, topLimit),
+    categoryBreakdown: sorted.map(({ categoryId, label, color, amount }) => ({
       categoryId,
-      name: resolveCategoryLabel(categoryId, categoryMap),
-      color: resolveCategoryColor(categoryId, categoryMap),
+      name: label,
+      color,
       amount,
-    }))
-    .sort((a, b) => b.amount - a.amount);
+    })),
+  };
 }
 
 export async function buildAiAnalysisPayload(

@@ -1,10 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-import {
-  SPENDING_CATEGORIES,
-  type SpendingCategoryId,
-} from "@/constants/categories";
+import type { SpendingCategoryId } from "@/constants/categories";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -80,10 +77,6 @@ export function mapPlaidCategory(
   return "other";
 }
 
-export function getCategoryById(categoryId: string) {
-  return SPENDING_CATEGORIES.find((category) => category.id === categoryId);
-}
-
 export function formatDate(date: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -122,4 +115,9 @@ export function formatRelativeTime(dateString: string | null) {
 export function formatPercent(value: number) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(1)}%`;
+}
+
+export function safeNumber(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
 }

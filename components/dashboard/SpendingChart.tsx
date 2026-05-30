@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import {
   Cell,
   Pie,
@@ -16,6 +17,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useCurrency } from "@/hooks/useCurrency";
+import { getThemeCssVar } from "@/lib/applyTheme";
+import { useThemeStore } from "@/stores/themeStore";
 
 interface CategoryDatum {
   categoryId: string;
@@ -26,10 +29,20 @@ interface CategoryDatum {
 
 export function SpendingChart({ data }: { data: CategoryDatum[] }) {
   const { formatAmount } = useCurrency();
+  const selectedThemeId = useThemeStore((state) => state.selectedThemeId);
+  const tooltipFormatter = useCallback(
+    (value: unknown) => formatAmount(Number(value ?? 0)),
+    [formatAmount]
+  );
+  const tooltipStyle = {
+    backgroundColor: getThemeCssVar("popover"),
+    border: `1px solid ${getThemeCssVar("border")}`,
+    borderRadius: "0.5rem",
+  };
 
   if (!data.length) {
     return (
-      <Card className="border-slate-800 bg-slate-900/50">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle>Spending by Category</CardTitle>
           <CardDescription>Current month breakdown</CardDescription>
@@ -44,7 +57,7 @@ export function SpendingChart({ data }: { data: CategoryDatum[] }) {
   }
 
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle>Spending by Category</CardTitle>
         <CardDescription>Current month breakdown</CardDescription>
@@ -66,12 +79,9 @@ export function SpendingChart({ data }: { data: CategoryDatum[] }) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value) => formatAmount(Number(value ?? 0))}
-                contentStyle={{
-                  backgroundColor: "#0f172a",
-                  border: "1px solid #1e293b",
-                  borderRadius: "0.5rem",
-                }}
+                key={selectedThemeId}
+                formatter={tooltipFormatter}
+                contentStyle={tooltipStyle}
               />
             </PieChart>
           </ResponsiveContainer>
