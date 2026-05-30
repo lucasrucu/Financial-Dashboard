@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,12 +13,25 @@ import {
 import { useAiInsight } from "@/hooks/useAiInsight";
 
 export function AiInsightPanel() {
-  const { insight, isLoading, error, analyze } = useAiInsight();
+  const { insight, isLoading, error, analyze, clearInsight } = useAiInsight();
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={() => analyze(true)} disabled={isLoading}>
+        <Button type="button" onClick={() => analyze(false)} disabled={isLoading}>
+          {isLoading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <RefreshCw className="size-4" />
+          )}
+          Refresh insights
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => analyze(true)}
+          disabled={isLoading}
+        >
           {isLoading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
@@ -26,6 +39,12 @@ export function AiInsightPanel() {
           )}
           Roast my finances
         </Button>
+        {insight ? (
+          <Button type="button" variant="ghost" onClick={clearInsight} disabled={isLoading}>
+            <Trash2 className="size-4" />
+            Clear
+          </Button>
+        ) : null}
         {insight?.cached ? (
           <p className="text-xs text-muted-foreground">
             Showing cached analysis from {new Date(insight.created_at).toLocaleString()}
@@ -121,7 +140,7 @@ export function AiInsightPanel() {
       ) : !isLoading && !error ? (
         <Card className="border-slate-800 bg-slate-900/50">
           <CardContent className="py-10 text-center text-muted-foreground">
-            Hit the button when you are ready for an honest (but loving) roast.
+            Refresh for cached insights or hit Roast for a fresh (loving) analysis.
           </CardContent>
         </Card>
       ) : null}

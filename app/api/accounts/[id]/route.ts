@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
+import { requireUser } from "@/lib/auth";
 import {
   enrichAccountsWithEffectiveBalance,
   getEffectiveBalanceForAccount,
 } from "@/lib/accountBalance";
-import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +20,18 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase } = auth;
     const { id } = await context.params;
     const body = (await request.json()) as {
       balance_anchor_usd?: number;
       balance_anchor_date?: string;
       clear_anchor?: boolean;
     };
-
-    const supabase = getSupabaseAdmin();
 
     const { data: existing, error: existingError } = await supabase
       .from("accounts")
@@ -59,7 +63,7 @@ export async function PATCH(
         throw new Error(error.message);
       }
 
-      const [account] = await enrichAccountsWithEffectiveBalance([
+      const [account] = await enrichAccountsWithEffectiveBalance(supabase, [
         {
           ...data,
           balance_usd: Number(data.balance_usd),
@@ -95,7 +99,7 @@ export async function PATCH(
       throw new Error(error.message);
     }
 
-    const effectiveBalanceUsd = await getEffectiveBalanceForAccount(id);
+    const effectiveBalanceUsd = await getEffectiveBalanceForAccount(supabase, id);
 
     return NextResponse.json({
       account: {

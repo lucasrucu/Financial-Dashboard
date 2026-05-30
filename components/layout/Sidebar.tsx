@@ -1,18 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Receipt, Sparkles, Menu, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  FolderOpen,
+  LayoutDashboard,
+  LogOut,
+  Receipt,
+  Sparkles,
+  Menu,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
+  { href: "/categories", label: "Categories", icon: FolderOpen },
   { href: "/insights", label: "Insights", icon: Sparkles },
 ] as const;
+
+function SignOutButton({ onSignedOut }: { onSignedOut?: () => void }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  async function handleSignOut() {
+    setLoading(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    onSignedOut?.();
+    router.push("/login");
+    router.refresh();
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      className="w-full justify-start gap-3 px-3 text-muted-foreground hover:text-foreground"
+      onClick={handleSignOut}
+      disabled={loading}
+    >
+      <LogOut className="size-4 shrink-0" />
+      Sign out
+    </Button>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -50,6 +87,10 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="border-t border-slate-800 p-4">
+        <SignOutButton onSignedOut={() => setMobileOpen(false)} />
+      </div>
     </>
   );
 

@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
 
-import { buildExchangeRateUrl, isRateFresh } from "@/lib/currency";
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
+import { buildExchangeRateUrl, DEFAULT_USD_TO_PEN, isRateFresh } from "@/lib/currency";
 
-const DEFAULT_RATE = 3.75;
+const DEFAULT_RATE = DEFAULT_USD_TO_PEN;
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase } = auth;
 
     const { data: cachedRate } = await supabase
       .from("exchange_rates")
@@ -66,21 +71,27 @@ export async function GET() {
       cached: false,
     });
   } catch (error) {
-    const supabase = getSupabaseAdmin();
-    const { data: cachedRate } = await supabase
-      .from("exchange_rates")
-      .select("*")
-      .order("fetched_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    try {
+      const auth = await requireUser();
+      if (!auth.unauthorized) {
+        const { data: cachedRate } = await auth.supabase
+          .from("exchange_rates")
+          .select("*")
+          .order("fetched_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-    if (cachedRate) {
-      return NextResponse.json({
-        usd_to_pen: Number(cachedRate.usd_to_pen),
-        fetched_at: cachedRate.fetched_at,
-        cached: true,
-        stale: true,
-      });
+        if (cachedRate) {
+          return NextResponse.json({
+            usd_to_pen: Number(cachedRate.usd_to_pen),
+            fetched_at: cachedRate.fetched_at,
+            cached: true,
+            stale: true,
+          });
+        }
+      }
+    } catch {
+      // ignore nested auth errors
     }
 
     return NextResponse.json({

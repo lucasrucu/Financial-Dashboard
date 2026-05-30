@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SPENDING_CATEGORIES } from "@/constants/categories";
+import { useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
 import {
   updateTransactionCategory,
@@ -62,6 +63,7 @@ export function TransactionTable() {
     setPage(1);
   }, [search, categoryId, startDate, endDate]);
 
+  const { data: categories } = useCategories();
   const { data, isLoading, error, isFetching } = useTransactions(filters);
 
   const categoryMutation = useMutation({
@@ -102,7 +104,7 @@ export function TransactionTable() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {SPENDING_CATEGORIES.map((category) => (
+            {(categories ?? []).map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 {category.icon} {category.label}
               </SelectItem>
@@ -138,12 +140,15 @@ export function TransactionTable() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto mb-2 size-5 animate-spin" />
-                  Loading transactions...
-                </TableCell>
-              </TableRow>
+              Array.from({ length: 8 }).map((_, i) => (
+                <TableRow key={i} className="border-slate-800">
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-[170px] rounded-md" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-16" /></TableCell>
+                </TableRow>
+              ))
             ) : error ? (
               <TableRow>
                 <TableCell colSpan={5} className="py-10 text-center text-negative">
@@ -191,7 +196,7 @@ export function TransactionTable() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {SPENDING_CATEGORIES.map((item) => (
+                          {(categories ?? []).map((item) => (
                             <SelectItem key={item.id} value={item.id}>
                               {item.icon} {item.label}
                             </SelectItem>

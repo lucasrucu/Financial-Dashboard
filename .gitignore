@@ -34,3 +34,20 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local planning & checklists
+LAUNCH_CHECKLIST.md
+
+# IDE / editor configs (local only)
+.cursor/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code local settings (CLAUDE.md and docs are committed; settings.local.json is not)
+.claude/settings.local.json
+
+# Supabase CLI artifacts
+supabase/.branches/
+supabase/.temp/

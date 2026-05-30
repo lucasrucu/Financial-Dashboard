@@ -1,18 +1,23 @@
 import { NextResponse } from "next/server";
 
+import { requireUser } from "@/lib/auth";
 import { enrichAccountsWithEffectiveBalance } from "@/lib/accountBalance";
-import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase } = auth;
 
     const { data: plaidItem } = await supabase
       .from("plaid_items")
       .select("*")
-      .neq("item_id", "bcp-manual")
+      .not("item_id", "like", "bcp-manual%")
       .order("last_synced_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -20,7 +25,9 @@ export async function GET() {
     const { data: bcpItem } = await supabase
       .from("plaid_items")
       .select("*")
-      .eq("item_id", "bcp-manual")
+      .like("item_id", "bcp-manual%")
+      .order("last_synced_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     const { data: accounts, error } = await supabase
@@ -33,6 +40,7 @@ export async function GET() {
     }
 
     const mappedAccounts = await enrichAccountsWithEffectiveBalance(
+      supabase,
       (accounts ?? []).map((account) => ({
         ...account,
         balance_usd: Number(account.balance_usd),

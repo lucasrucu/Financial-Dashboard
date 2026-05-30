@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
 
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
 import type { GoalUpdatePayload } from "@/types/goal";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = getSupabaseAdmin();
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase } = auth;
     const { data, error } = await supabase.from("goals").select("*").order("name");
 
     if (error) {
@@ -29,6 +34,12 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase } = auth;
     const body = (await request.json()) as GoalUpdatePayload & { id?: string };
 
     if (!body.id) {
@@ -52,8 +63,6 @@ export async function PATCH(request: Request) {
     if (body.deadline !== undefined) {
       updates.deadline = body.deadline;
     }
-
-    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
       .from("goals")

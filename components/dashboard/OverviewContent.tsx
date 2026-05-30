@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { ArrowDownRight, ArrowUpRight, Loader2, Wallet } from "lucide-react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { ArrowDownRight, ArrowUpRight, Wallet } from "lucide-react";
 
 import { BankAccountCard } from "@/components/dashboard/BankAccountCard";
 import { GoalCards } from "@/components/dashboard/GoalCard";
@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/useCurrency";
 import { formatPercent } from "@/lib/utils";
 
@@ -51,6 +52,7 @@ export function OverviewContent() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["overview"],
     queryFn: fetchOverviewStats,
+    placeholderData: keepPreviousData,
   });
 
   const spending = data?.spendingComparison;
@@ -71,7 +73,7 @@ export function OverviewContent() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <Skeleton className="h-9 w-32" />
             ) : error ? (
               <p className="text-sm text-negative">Unable to load net worth</p>
             ) : (
@@ -87,7 +89,10 @@ export function OverviewContent() {
           </CardHeader>
           <CardContent className="space-y-2">
             {isLoading ? (
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <div className="space-y-2">
+                <Skeleton className="h-9 w-32" />
+                <Skeleton className="h-4 w-48" />
+              </div>
             ) : error || !spending ? (
               <p className="text-sm text-negative">Unable to load spending comparison</p>
             ) : (
@@ -126,7 +131,17 @@ export function OverviewContent() {
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoading ? (
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                  <Skeleton className="h-2 w-full rounded-full" />
+                </div>
+              ))}
+            </div>
           ) : !data?.topCategories.length ? (
             <p className="text-sm text-muted-foreground">No category data yet.</p>
           ) : (

@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SPENDING_CATEGORIES } from "@/constants/categories";
+import { getCategoryById, useCategories } from "@/hooks/useCategories";
 import { formatDate } from "@/lib/utils";
 import type { BcpImportPayload, BcpImportPreview } from "@/types/bcp";
 
@@ -84,12 +84,13 @@ function formatUsd(amount: number) {
   }).format(amount);
 }
 
-function getCategoryLabel(categoryId: string) {
-  return SPENDING_CATEGORIES.find((category) => category.id === categoryId)?.label ?? categoryId;
+function getCategoryLabel(categoryId: string, categories: ReturnType<typeof useCategories>["data"]) {
+  return getCategoryById(categories, categoryId)?.label ?? categoryId;
 }
 
 export function BcpStatementUpload() {
   const queryClient = useQueryClient();
+  const { data: categories } = useCategories();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [password, setPassword] = useState("");
   const [preview, setPreview] = useState<BcpImportPreview | null>(null);
@@ -289,7 +290,7 @@ export function BcpStatementUpload() {
                           {transaction.type === "credit" ? "Income" : "Expense"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{getCategoryLabel(transaction.categoryId)}</TableCell>
+                      <TableCell>{getCategoryLabel(transaction.categoryId, categories)}</TableCell>
                       <TableCell className="text-right">{formatPen(transaction.amountPen)}</TableCell>
                       <TableCell className="text-right">
                         {formatUsd(transaction.amountUsd)}

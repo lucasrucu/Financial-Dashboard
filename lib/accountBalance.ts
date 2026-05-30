@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface AccountBalanceRow {
   id: string;
@@ -19,11 +19,10 @@ export function computeEffectiveBalance(
 }
 
 export async function getTransactionDeltaSinceAnchor(
+  supabase: SupabaseClient,
   accountId: string,
   anchorDate: string
 ): Promise<number> {
-  const supabase = getSupabaseAdmin();
-
   const { data, error } = await supabase
     .from("transactions")
     .select("amount_usd")
@@ -40,9 +39,10 @@ export async function getTransactionDeltaSinceAnchor(
   );
 }
 
-export async function getEffectiveBalanceForAccount(accountId: string): Promise<number> {
-  const supabase = getSupabaseAdmin();
-
+export async function getEffectiveBalanceForAccount(
+  supabase: SupabaseClient,
+  accountId: string
+): Promise<number> {
   const { data: account, error } = await supabase
     .from("accounts")
     .select("id, balance_usd, balance_anchor_usd, balance_anchor_date")
@@ -65,15 +65,17 @@ export async function getEffectiveBalanceForAccount(accountId: string): Promise<
     return row.balance_usd;
   }
 
-  const delta = await getTransactionDeltaSinceAnchor(row.id, row.balance_anchor_date);
+  const delta = await getTransactionDeltaSinceAnchor(
+    supabase,
+    row.id,
+    row.balance_anchor_date
+  );
   return computeEffectiveBalance(row, delta);
 }
 
-export async function getEffectiveBalancesForAccounts(): Promise<
-  Map<string, number>
-> {
-  const supabase = getSupabaseAdmin();
-
+export async function getEffectiveBalancesForAccounts(
+  supabase: SupabaseClient
+): Promise<Map<string, number>> {
   const { data: accounts, error } = await supabase
     .from("accounts")
     .select("id, balance_usd, balance_anchor_usd, balance_anchor_date");
@@ -132,8 +134,8 @@ export async function getEffectiveBalancesForAccounts(): Promise<
 
 export async function enrichAccountsWithEffectiveBalance<
   T extends AccountBalanceRow & Record<string, unknown>,
->(accounts: T[]) {
-  const effectiveBalances = await getEffectiveBalancesForAccounts();
+>(supabase: SupabaseClient, accounts: T[]) {
+  const effectiveBalances = await getEffectiveBalancesForAccounts(supabase);
 
   return accounts.map((account) => ({
     ...account,

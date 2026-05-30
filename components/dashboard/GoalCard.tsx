@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useGoals } from "@/hooks/useGoals";
 import type { Goal } from "@/types/goal";
@@ -161,7 +162,28 @@ export function GoalCards() {
   const { goals, isLoading, error } = useGoals();
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading goals...</p>;
+    return (
+      <div className="grid gap-4 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i} className="border-slate-800 bg-slate-900/50">
+            <CardHeader className="flex flex-row items-start justify-between gap-2">
+              <div className="space-y-1.5">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-end justify-between">
+                <Skeleton className="h-7 w-24" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              <Skeleton className="h-2 w-full" />
+              <Skeleton className="h-3 w-20" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
   }
 
   if (error) {

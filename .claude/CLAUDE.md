@@ -60,7 +60,10 @@ app/
   (dashboard)/          # Route group — dashboard pages
     page.tsx            # Overview (/)
     transactions/       # Transactions list
+    categories/         # Category management
     insights/           # AI insights
+  login/                # Google OAuth + passkey sign-in
+  auth/callback/        # OAuth callback handler
   api/                  # All API routes (server-only, see docs/architecture.md)
   layout.tsx / providers.tsx
 
@@ -70,11 +73,26 @@ components/
   dashboard/            # Feature components (dumb, data-props only)
 
 hooks/                  # All data-fetching & mutation logic
-lib/                    # Server utilities: supabase, plaid, anthropic, currency, bcp/*
-stores/                 # Zustand stores (currencyStore.ts)
+lib/
+  supabase/
+    client.ts           # Browser client (createBrowserClient via @supabase/ssr)
+    server.ts           # Server client (createServerClient via @supabase/ssr)
+  supabase.ts           # Admin client (getSupabaseAdmin — service role, server-only)
+  plaid/
+    sync-helpers.ts     # Shared Plaid account + transaction sync logic
+  plaid.ts              # Plaid SDK client init
+  auth.ts               # requireUser() — extracts user from session, used by all API routes
+  anthropic.ts          # Claude client + analysis helper
+  currency.ts           # USD ↔ PEN conversion (single source of truth)
+  bcp/                  # BCP PDF parser, importer, category mapper
+  accountBalance.ts     # Net-worth calculation with balance anchor override
+  aggregates.ts         # Spending aggregation helpers
+stores/                 # Zustand stores (currencyStore.ts, aiInsightStore.ts)
 types/                  # TypeScript interfaces per domain
 constants/              # categories.ts, currencies.ts
-supabase/migrations/    # 001 initial · 002 bcp · 003 balance_anchor
+supabase/
+  schema.sql            # Complete schema — run once per environment
+  migrations/           # Incremental SQL migrations (timestamped)
 ```
 
 ---

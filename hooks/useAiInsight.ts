@@ -1,7 +1,9 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useAiInsightStore } from "@/stores/aiInsightStore";
 import type { AiInsightResponse } from "@/types/ai";
 
 interface AiInsightResult {
@@ -27,24 +29,51 @@ async function fetchAiInsight(force = false) {
 
 export function useAiInsight() {
   const queryClient = useQueryClient();
+  const stored = useAiInsightStore();
 
-  const query = useQuery({
-    queryKey: ["ai-insight"],
-    queryFn: () => fetchAiInsight(false),
-    enabled: false,
-  });
+  useEffect(() => {
+    if (stored.insight) {
+      return;
+    }
+
+    fetchAiInsight(false)
+      .then((data) => {
+        stored.setInsight(data);
+        queryClient.setQueryData(["ai-insight"], data);
+      })
+      .catch(() => {
+        // optional fetch — ignore errors on mount
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const mutation = useMutation({
     mutationFn: (force: boolean) => fetchAiInsight(force),
     onSuccess: (data) => {
+      stored.setInsight(data);
       queryClient.setQueryData(["ai-insight"], data);
     },
   });
 
+  const insightResult =
+    mutation.data ??
+    (stored.insight
+      ? {
+          insight: stored.insight,
+          cached: stored.cached,
+          created_at: stored.created_at ?? "",
+          period: stored.period ?? "",
+        }
+      : null);
+
   return {
-    insight: query.data ?? mutation.data,
+    insight: insightResult,
     isLoading: mutation.isPending,
-    error: mutation.error ?? query.error,
+    error: mutation.error,
     analyze: (force = false) => mutation.mutate(force),
+    clearInsight: () => {
+      stored.clearInsight();
+      queryClient.removeQueries({ queryKey: ["ai-insight"] });
+    },
   };
 }

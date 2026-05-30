@@ -1,6 +1,13 @@
-import { SPENDING_CATEGORIES } from "@/constants/categories";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import {
+  buildCategoryMap,
+  resolveCategoryColor,
+  resolveCategoryLabel,
+  seedCategoriesIfEmpty,
+  type Category,
+} from "@/lib/categories";
 import { getEffectiveBalancesForAccounts } from "@/lib/accountBalance";
-import { getSupabaseAdmin } from "@/lib/supabase";
 import type { AiAnalysisPayload } from "@/types/ai";
 import type { Goal } from "@/types/goal";
 import type { Transaction } from "@/types/transaction";
@@ -34,9 +41,11 @@ function sumIncome(transactions: Transaction[]) {
     .reduce((sum, transaction) => sum + Math.abs(transaction.amount_usd), 0);
 }
 
-export async function fetchTransactionsInRange(start: string, end: string) {
-  const supabase = getSupabaseAdmin();
-
+export async function fetchTransactionsInRange(
+  supabase: SupabaseClient,
+  start: string,
+  end: string
+) {
   const { data, error } = await supabase
     .from("transactions")
     .select("*")
@@ -50,18 +59,18 @@ export async function fetchTransactionsInRange(start: string, end: string) {
   return data ?? [];
 }
 
-export async function getNetWorth() {
-  const effectiveBalances = await getEffectiveBalancesForAccounts();
+export async function getNetWorth(supabase: SupabaseClient) {
+  const effectiveBalances = await getEffectiveBalancesForAccounts(supabase);
   return Array.from(effectiveBalances.values()).reduce((sum, balance) => sum + balance, 0);
 }
 
-export async function getMonthlySpendingComparison() {
+export async function getMonthlySpendingComparison(supabase: SupabaseClient) {
   const currentRange = getMonthRange(0);
   const previousRange = getMonthRange(-1);
 
   const [currentTransactions, previousTransactions] = await Promise.all([
-    fetchTransactionsInRange(currentRange.start, currentRange.end),
-    fetchTransactionsInRange(previousRange.start, previousRange.end),
+    fetchTransactionsInRange(supabase, currentRange.start, currentRange.end),
+    fetchTransactionsInRange(supabase, previousRange.start, previousRange.end),
   ]);
 
   const currentSpending = sumSpending(currentTransactions);
@@ -78,9 +87,17 @@ export async function getMonthlySpendingComparison() {
   };
 }
 
-export async function getTopCategories(limit = 3) {
+export async function getTopCategories(
+  supabase: SupabaseClient,
+  userId: string,
+  limit = 3
+) {
   const range = getMonthRange(0);
-  const transactions = await fetchTransactionsInRange(range.start, range.end);
+  const [transactions, categories] = await Promise.all([
+    fetchTransactionsInRange(supabase, range.start, range.end),
+    seedCategoriesIfEmpty(supabase, userId),
+  ]);
+  const categoryMap = buildCategoryMap(categories);
 
   const totals = new Map<string, number>();
 
@@ -91,27 +108,28 @@ export async function getTopCategories(limit = 3) {
 
     totals.set(
       transaction.category_id,
-      (totals.get(transaction.category_id) ?? 0) + transaction.amount_usd
+      (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount_usd)
     );
   }
 
   return Array.from(totals.entries())
-    .map(([categoryId, amount]) => {
-      const category = SPENDING_CATEGORIES.find((item) => item.id === categoryId);
-      return {
-        categoryId,
-        label: category?.label ?? categoryId,
-        color: category?.color ?? "#94a3b8",
-        amount,
-      };
-    })
+    .map(([categoryId, amount]) => ({
+      categoryId,
+      label: resolveCategoryLabel(categoryId, categoryMap),
+      color: resolveCategoryColor(categoryId, categoryMap),
+      amount,
+    }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, limit);
 }
 
-export async function getCategoryBreakdown() {
+export async function getCategoryBreakdown(supabase: SupabaseClient, userId: string) {
   const range = getMonthRange(0);
-  const transactions = await fetchTransactionsInRange(range.start, range.end);
+  const [transactions, categories] = await Promise.all([
+    fetchTransactionsInRange(supabase, range.start, range.end),
+    seedCategoriesIfEmpty(supabase, userId),
+  ]);
+  const categoryMap = buildCategoryMap(categories);
   const totals = new Map<string, number>();
 
   for (const transaction of transactions) {
@@ -121,27 +139,28 @@ export async function getCategoryBreakdown() {
 
     totals.set(
       transaction.category_id,
-      (totals.get(transaction.category_id) ?? 0) + transaction.amount_usd
+      (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount_usd)
     );
   }
 
   return Array.from(totals.entries())
-    .map(([categoryId, amount]) => {
-      const category = SPENDING_CATEGORIES.find((item) => item.id === categoryId);
-      return {
-        categoryId,
-        name: category?.label ?? categoryId,
-        color: category?.color ?? "#94a3b8",
-        amount,
-      };
-    })
+    .map(([categoryId, amount]) => ({
+      categoryId,
+      name: resolveCategoryLabel(categoryId, categoryMap),
+      color: resolveCategoryColor(categoryId, categoryMap),
+      amount,
+    }))
     .sort((a, b) => b.amount - a.amount);
 }
 
-export async function buildAiAnalysisPayload(): Promise<AiAnalysisPayload> {
+export async function buildAiAnalysisPayload(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<AiAnalysisPayload> {
   const range = getMonthRange(0);
-  const transactions = await fetchTransactionsInRange(range.start, range.end);
-  const supabase = getSupabaseAdmin();
+  const transactions = await fetchTransactionsInRange(supabase, range.start, range.end);
+  const categories = await seedCategoriesIfEmpty(supabase, userId);
+  const categoryMap = buildCategoryMap(categories);
 
   const { data: goals, error } = await supabase.from("goals").select("*");
 
@@ -162,19 +181,16 @@ export async function buildAiAnalysisPayload(): Promise<AiAnalysisPayload> {
       continue;
     }
 
-    const category = SPENDING_CATEGORIES.find(
-      (item) => item.id === transaction.category_id
-    );
+    const label = resolveCategoryLabel(transaction.category_id, categoryMap);
 
     categoryTotals.set(
-      category?.label ?? transaction.category_id,
-      (categoryTotals.get(category?.label ?? transaction.category_id) ?? 0) +
-        transaction.amount_usd
+      label,
+      (categoryTotals.get(label) ?? 0) + Number(transaction.amount_usd)
     );
 
     merchantTotals.set(
       transaction.name,
-      (merchantTotals.get(transaction.name) ?? 0) + transaction.amount_usd
+      (merchantTotals.get(transaction.name) ?? 0) + Number(transaction.amount_usd)
     );
   }
 
@@ -193,7 +209,7 @@ export async function buildAiAnalysisPayload(): Promise<AiAnalysisPayload> {
     .slice(0, 5)
     .map(
       (transaction) =>
-        `${transaction.name} ($${transaction.amount_usd.toFixed(2)} on ${transaction.date})`
+        `${transaction.name} ($${Number(transaction.amount_usd).toFixed(2)} on ${transaction.date})`
     );
 
   const goalProgress = (goals ?? []).map((goal: Goal) => ({
@@ -236,3 +252,5 @@ export function detectRecurringTransactions(
     return recurringKeys.has(key);
   });
 }
+
+export type { Category };

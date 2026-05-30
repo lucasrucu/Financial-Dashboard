@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
 
-import {
-  exchangePublicToken,
-  fetchAccounts,
-  fetchTransactions,
-  getInstitutionName,
-} from "@/lib/plaid";
-import { detectRecurringTransactions } from "@/lib/aggregates";
-import { getSupabaseAdmin } from "@/lib/supabase";
-import { mapPlaidCategory } from "@/lib/utils";
+import { requireUser } from "@/lib/auth";
+import { exchangePublicToken, getInstitutionName } from "@/lib/plaid";
+import { syncPlaidAccounts, syncPlaidTransactions } from "@/lib/plaid/sync-helpers";
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase, user } = auth;
     const body = (await request.json()) as { public_token?: string };
 
     if (!body.public_token) {
@@ -20,7 +20,6 @@ export async function POST(request: Request) {
 
     const { accessToken, itemId } = await exchangePublicToken(body.public_token);
     const institutionName = await getInstitutionName(accessToken);
-    const supabase = getSupabaseAdmin();
 
     const { data: existingItem } = await supabase
       .from("plaid_items")
@@ -44,6 +43,7 @@ export async function POST(request: Request) {
         .insert({
           access_token: accessToken,
           item_id: itemId,
+          user_id: user.id,
           institution_name: institutionName,
         })
         .select("id")
@@ -56,84 +56,8 @@ export async function POST(request: Request) {
       plaidItemId = insertedItem.id;
     }
 
-    const accounts = await fetchAccounts(accessToken);
-
-    const { data: existingAccounts } = await supabase
-      .from("accounts")
-      .select("plaid_account_id, balance_anchor_usd")
-      .in(
-        "plaid_account_id",
-        accounts.map((account) => account.plaid_account_id)
-      );
-
-    const anchoredAccountIds = new Set(
-      (existingAccounts ?? [])
-        .filter((account) => account.balance_anchor_usd !== null)
-        .map((account) => account.plaid_account_id)
-    );
-
-    for (const account of accounts) {
-      const upsertPayload: {
-        plaid_account_id: string;
-        plaid_item_id: string;
-        name: string;
-        balance_usd?: number;
-        mask: string | null;
-        subtype: string | null;
-      } = {
-        plaid_account_id: account.plaid_account_id,
-        plaid_item_id: plaidItemId,
-        name: account.name,
-        mask: account.mask,
-        subtype: account.subtype,
-      };
-
-      if (!anchoredAccountIds.has(account.plaid_account_id)) {
-        upsertPayload.balance_usd = account.balance_usd;
-      }
-
-      const { error: accountError } = await supabase
-        .from("accounts")
-        .upsert(upsertPayload, { onConflict: "plaid_account_id" });
-
-      if (accountError) {
-        throw new Error(accountError.message);
-      }
-    }
-
-    const transactions = await fetchTransactions(accessToken, 90);
-    const recurringFlags = detectRecurringTransactions(transactions);
-
-    const { data: accountRows } = await supabase
-      .from("accounts")
-      .select("id, plaid_account_id");
-
-    const accountMap = new Map(
-      (accountRows ?? []).map((account) => [account.plaid_account_id, account.id])
-    );
-
-    for (let index = 0; index < transactions.length; index += 1) {
-      const transaction = transactions[index];
-      const accountId = accountMap.get(transaction.plaid_account_id);
-
-      if (!accountId) {
-        continue;
-      }
-
-      await supabase.from("transactions").upsert(
-        {
-          plaid_transaction_id: transaction.plaid_transaction_id,
-          account_id: accountId,
-          date: transaction.date,
-          name: transaction.name,
-          amount_usd: transaction.amount_usd,
-          category_id: mapPlaidCategory(transaction.plaid_category),
-          plaid_category: transaction.plaid_category,
-          is_recurring: recurringFlags[index] ?? false,
-        },
-        { onConflict: "plaid_transaction_id" }
-      );
-    }
+    await syncPlaidAccounts(supabase, accessToken, plaidItemId, user.id);
+    await syncPlaidTransactions(supabase, accessToken, user.id, 90);
 
     await supabase
       .from("plaid_items")

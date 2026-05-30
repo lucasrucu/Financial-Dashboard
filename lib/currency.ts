@@ -49,8 +49,14 @@ export async function fetchHistoricalUsdToPen(
     return cache.get(date)!;
   }
 
+  const fetchWithTimeout = (url: string) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 5000);
+    return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
+  };
+
   try {
-    const response = await fetch(buildHistoricalExchangeRateUrl(date, "USD", "PEN"));
+    const response = await fetchWithTimeout(buildHistoricalExchangeRateUrl(date, "USD", "PEN"));
 
     if (response.ok) {
       const payload = (await response.json()) as { rates?: { PEN?: number } };
@@ -66,7 +72,7 @@ export async function fetchHistoricalUsdToPen(
   }
 
   try {
-    const latestResponse = await fetch(buildExchangeRateUrl("USD", "PEN"));
+    const latestResponse = await fetchWithTimeout(buildExchangeRateUrl("USD", "PEN"));
 
     if (latestResponse.ok) {
       const payload = (await latestResponse.json()) as { rates?: { PEN?: number } };

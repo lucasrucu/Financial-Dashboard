@@ -29,25 +29,35 @@ async function exchangeToken(publicToken: string) {
 
 interface PlaidLinkProps {
   onSuccess?: () => void;
+  onError?: (message: string) => void;
   children?: React.ReactNode;
   className?: string;
 }
 
-export function PlaidLink({ onSuccess, children, className }: PlaidLinkProps) {
+export function PlaidLink({ onSuccess, onError, children, className }: PlaidLinkProps) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLinkToken()
       .then((data) => setLinkToken(data.link_token))
-      .catch(() => setLinkToken(null));
-  }, []);
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : "Failed to initialize Plaid";
+        onError?.(message);
+        setLinkToken(null);
+      });
+  }, [onError]);
 
   const handleSuccess = useCallback(
     async (publicToken: string) => {
-      await exchangeToken(publicToken);
-      onSuccess?.();
+      try {
+        await exchangeToken(publicToken);
+        onSuccess?.();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to connect bank account";
+        onError?.(message);
+      }
     },
-    [onSuccess]
+    [onSuccess, onError]
   );
 
   const { open, ready } = usePlaidLink({

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Pencil, RefreshCw, X } from "lucide-react";
 
 import { PlaidLink } from "@/components/dashboard/PlaidLink";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -239,9 +240,11 @@ export function BankAccountCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         {accountsQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading account...
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Skeleton className="h-8 w-36" />
+              <Skeleton className="h-4 w-28" />
+            </div>
           </div>
         ) : data?.connected && (data.accounts ?? []).length > 0 ? (
           <div className="space-y-3">

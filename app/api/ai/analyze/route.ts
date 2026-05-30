@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
 
+import { requireUser } from "@/lib/auth";
 import { analyzeFinances } from "@/lib/anthropic";
 import { buildAiAnalysisPayload } from "@/lib/aggregates";
-import { getSupabaseAdmin } from "@/lib/supabase";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase, user } = auth;
     const { searchParams } = new URL(request.url);
     const force = searchParams.get("force") === "true";
-    const supabase = getSupabaseAdmin();
 
     const { data: cached } = await supabase
       .from("ai_cache")
@@ -32,10 +37,11 @@ export async function GET(request: Request) {
       });
     }
 
-    const payload = await buildAiAnalysisPayload();
+    const payload = await buildAiAnalysisPayload(supabase, user.id);
     const insight = await analyzeFinances(payload);
 
     await supabase.from("ai_cache").insert({
+      user_id: user.id,
       response_json: insight,
       period: payload.period,
     });

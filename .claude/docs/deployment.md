@@ -45,10 +45,8 @@ npm install
 cp .env.example .env.local
 # Fill in all required values
 
-# 3. Run Supabase migrations in order via SQL Editor or supabase CLI:
-#   supabase/migrations/001_initial.sql
-#   supabase/migrations/002_bcp_imports.sql
-#   supabase/migrations/003_balance_anchor.sql
+# 3. Run the full schema via Supabase SQL Editor:
+#   supabase/schema.sql
 
 # 4. Start dev server
 npm run dev

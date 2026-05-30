@@ -7,15 +7,18 @@ import {
 } from "@/lib/bcp/parser";
 import { extractBcpPdfText, hashFileBuffer } from "@/lib/bcp/pdf";
 import { convertPenToUsd, fetchHistoricalUsdToPen } from "@/lib/currency";
-import { getSupabaseAdmin } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   BcpImportPayload,
   BcpImportPreview,
   BcpPreviewTransaction,
 } from "@/types/bcp";
 
-const BCP_ITEM_ID = "bcp-manual";
 const BCP_ACCESS_TOKEN = "manual-import";
+
+function bcpItemId(userId: string) {
+  return `bcp-manual-${userId}`;
+}
 
 export function resolveBcpPassword(override?: string | null): string {
   const password = override?.trim() || process.env.BCP_PDF_PASSWORD?.trim();
@@ -61,13 +64,13 @@ export async function parseBcpStatementFile(
   };
 }
 
-async function ensureBcpPlaidItem() {
-  const supabase = getSupabaseAdmin();
+async function ensureBcpPlaidItem(supabase: SupabaseClient, userId: string) {
+  const itemId = bcpItemId(userId);
 
   const { data: existingItem } = await supabase
     .from("plaid_items")
     .select("id")
-    .eq("item_id", BCP_ITEM_ID)
+    .eq("item_id", itemId)
     .maybeSingle();
 
   if (existingItem) {
@@ -78,7 +81,8 @@ async function ensureBcpPlaidItem() {
     .from("plaid_items")
     .insert({
       access_token: BCP_ACCESS_TOKEN,
-      item_id: BCP_ITEM_ID,
+      item_id: itemId,
+      user_id: userId,
       institution_name: "BCP",
       last_synced_at: new Date().toISOString(),
     })
@@ -101,8 +105,11 @@ function accountMask(accountCode: string): string {
   return digits.slice(-4) || accountCode;
 }
 
-export async function importBcpStatement(payload: BcpImportPayload) {
-  const supabase = getSupabaseAdmin();
+export async function importBcpStatement(
+  supabase: SupabaseClient,
+  userId: string,
+  payload: BcpImportPayload
+) {
 
   if (!payload.force) {
     const { data: existingImport } = await supabase
@@ -116,7 +123,7 @@ export async function importBcpStatement(payload: BcpImportPayload) {
     }
   }
 
-  const plaidItemId = await ensureBcpPlaidItem();
+  const plaidItemId = await ensureBcpPlaidItem(supabase, userId);
   const plaidAccountId = buildPlaidAccountId(payload.accountCode);
   const closingRate = await fetchHistoricalUsdToPen(payload.period.end);
   const closingBalanceUsd =
@@ -133,6 +140,7 @@ export async function importBcpStatement(payload: BcpImportPayload) {
   const accountPayload: {
     plaid_account_id: string;
     plaid_item_id: string;
+    user_id: string;
     name: string;
     balance_usd?: number;
     mask: string;
@@ -140,6 +148,7 @@ export async function importBcpStatement(payload: BcpImportPayload) {
   } = {
     plaid_account_id: plaidAccountId,
     plaid_item_id: plaidItemId,
+    user_id: userId,
     name: "BCP Cuenta Digital",
     mask: accountMask(payload.accountCode),
     subtype: "savings",
@@ -171,39 +180,60 @@ export async function importBcpStatement(payload: BcpImportPayload) {
     }))
   );
 
-  let imported = 0;
-  let skipped = 0;
+  const plaidIds = payload.transactions.map((transaction) =>
+    buildBcpTransactionId(payload.accountCode, transaction)
+  );
+  const { data: existingRows } = plaidIds.length
+    ? await supabase
+        .from("transactions")
+        .select("plaid_transaction_id, category_id, category_source")
+        .in("plaid_transaction_id", plaidIds)
+    : { data: [] };
 
-  for (let index = 0; index < payload.transactions.length; index += 1) {
-    const transaction = payload.transactions[index];
-    const amountUsd = toPlaidSignedAmount(
-      transaction.amountPen,
-      transaction.amountUsd,
-      transaction.type
-    );
-    const externalId = buildBcpTransactionId(payload.accountCode, transaction);
+  const existingMap = new Map(
+    (existingRows ?? []).map((row) => [row.plaid_transaction_id, row])
+  );
 
-    const { error } = await supabase.from("transactions").upsert(
-      {
-        plaid_transaction_id: externalId,
-        account_id: accountRow.id,
-        date: transaction.date,
-        name: transaction.description,
-        amount_usd: amountUsd,
-        category_id: transaction.categoryId || mapBcpCategory(transaction.description),
-        plaid_category: null,
-        is_recurring: recurringFlags[index] ?? false,
-        source: "bcp",
-      },
-      { onConflict: "plaid_transaction_id" }
-    );
+  const transactionPayloads = payload.transactions.map((transaction, index) => {
+    const plaidTransactionId = buildBcpTransactionId(payload.accountCode, transaction);
+    const mappedCategory = transaction.categoryId || mapBcpCategory(transaction.description);
+    const existing = existingMap.get(plaidTransactionId);
+    const categoryId =
+      existing && existing.category_source !== "auto"
+        ? existing.category_id
+        : mappedCategory;
+    const categorySource =
+      existing && existing.category_source !== "auto" ? existing.category_source : "auto";
 
-    if (error) {
-      skipped += 1;
-      continue;
-    }
+    return {
+      plaid_transaction_id: plaidTransactionId,
+      account_id: accountRow.id,
+      user_id: userId,
+      date: transaction.date,
+      name: transaction.description,
+      amount_usd: toPlaidSignedAmount(
+        transaction.amountPen,
+        transaction.amountUsd,
+        transaction.type
+      ),
+      category_id: categoryId,
+      category_source: categorySource,
+      plaid_category: null,
+      is_recurring: recurringFlags[index] ?? false,
+      source: "bcp",
+    };
+  });
 
-    imported += 1;
+  const { error: txError, data: txData } = await supabase
+    .from("transactions")
+    .upsert(transactionPayloads, { onConflict: "plaid_transaction_id" })
+    .select("id");
+
+  const imported = txData?.length ?? 0;
+  const skipped = transactionPayloads.length - imported;
+
+  if (txError) {
+    throw new Error(txError.message);
   }
 
   if (payload.force) {
@@ -212,6 +242,7 @@ export async function importBcpStatement(payload: BcpImportPayload) {
 
   const { error: importError } = await supabase.from("statement_imports").insert({
     source: "bcp",
+    user_id: userId,
     account_code: payload.accountCode,
     period_start: payload.period.start,
     period_end: payload.period.end,
@@ -235,9 +266,10 @@ export async function importBcpStatement(payload: BcpImportPayload) {
   };
 }
 
-export async function checkDuplicateImport(fileHash: string) {
-  const supabase = getSupabaseAdmin();
-
+export async function checkDuplicateImport(
+  supabase: SupabaseClient,
+  fileHash: string
+) {
   const { data } = await supabase
     .from("statement_imports")
     .select("id, imported_at, period_start, period_end")

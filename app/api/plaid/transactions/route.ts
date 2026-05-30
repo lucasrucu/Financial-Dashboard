@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { getSupabaseAdmin } from "@/lib/supabase";
+import { requireUser } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase } = auth;
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate") ?? undefined;
     const endDate = searchParams.get("endDate") ?? undefined;
@@ -17,8 +23,6 @@ export async function GET(request: Request) {
     );
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-
-    const supabase = getSupabaseAdmin();
 
     let query = supabase
       .from("transactions")
@@ -81,6 +85,12 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const auth = await requireUser();
+    if (auth.unauthorized) {
+      return auth.unauthorized;
+    }
+
+    const { supabase } = auth;
     const body = (await request.json()) as {
       id?: string;
       category_id?: string;
@@ -93,11 +103,9 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const supabase = getSupabaseAdmin();
-
     const { data, error } = await supabase
       .from("transactions")
-      .update({ category_id: body.category_id })
+      .update({ category_id: body.category_id, category_source: "manual" })
       .eq("id", body.id)
       .select("*")
       .single();
