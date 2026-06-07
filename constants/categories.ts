@@ -11,6 +11,20 @@ export const SPENDING_CATEGORIES = [
   { id: "other", label: "Other", icon: "📦", color: "#94a3b8" },
 ] as const;
 
+export const INCOME_CATEGORIES = [
+  { id: "salary", label: "Salary / Paycheck", icon: "💼", color: "#16a34a" },
+  { id: "other_income", label: "Other Income", icon: "📥", color: "#06b6d4" },
+] as const;
+
+export const DEFAULT_CATEGORIES = [
+  ...SPENDING_CATEGORIES,
+  ...INCOME_CATEGORIES,
+] as const;
+
 export type SpendingCategoryId = (typeof SPENDING_CATEGORIES)[number]["id"];
+export type IncomeCategoryId = (typeof INCOME_CATEGORIES)[number]["id"];
+export type CategoryId = (typeof DEFAULT_CATEGORIES)[number]["id"];
 
 export type SpendingCategory = (typeof SPENDING_CATEGORIES)[number];
+export type IncomeCategory = (typeof INCOME_CATEGORIES)[number];
+export type DefaultCategory = (typeof DEFAULT_CATEGORIES)[number];

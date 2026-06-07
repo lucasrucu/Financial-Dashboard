@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { SPENDING_CATEGORIES } from "@/constants/categories";
+import { DEFAULT_CATEGORIES } from "@/constants/categories";
 
 export interface Category {
   id: string;
@@ -45,7 +45,7 @@ export async function seedCategoriesIfEmpty(
     return existing as Category[];
   }
 
-  const rows = SPENDING_CATEGORIES.map((category) => ({
+  const rows = DEFAULT_CATEGORIES.map((category) => ({
     id: category.id,
     user_id: userId,
     label: category.label,
@@ -64,6 +64,79 @@ export async function seedCategoriesIfEmpty(
   }
 
   return (inserted ?? []) as Category[];
+}
+
+export async function ensureDefaultCategories(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Category[]> {
+  const existing = await seedCategoriesIfEmpty(supabase, userId);
+  const existingIds = new Set(existing.map((category) => category.id));
+  const missing = DEFAULT_CATEGORIES.filter((category) => !existingIds.has(category.id));
+
+  if (!missing.length) {
+    return existing;
+  }
+
+  const rows = missing.map((category) => ({
+    id: category.id,
+    user_id: userId,
+    label: category.label,
+    icon: category.icon,
+    color: category.color,
+    is_system: category.id === "other",
+  }));
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("categories")
+    .insert(rows)
+    .select("*");
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
+
+  return [...existing, ...((inserted ?? []) as Category[])].sort((a, b) =>
+    a.label.localeCompare(b.label)
+  );
+}
+
+function isPlaidIncomeCategory(plaidCategory: string[] | null | undefined) {
+  const primary = plaidCategory?.[0]?.toUpperCase().replace(/\s+/g, "_");
+  return primary === "INCOME";
+}
+
+export async function backfillIncomeCategories(
+  supabase: SupabaseClient,
+  userId: string
+) {
+  const { data: rows, error } = await supabase
+    .from("transactions")
+    .select("id, plaid_category")
+    .eq("user_id", userId)
+    .lt("amount_usd", 0)
+    .eq("category_source", "auto");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const incomeIds = (rows ?? [])
+    .filter((row) => isPlaidIncomeCategory(row.plaid_category))
+    .map((row) => row.id);
+
+  if (!incomeIds.length) {
+    return;
+  }
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({ category_id: "salary" })
+    .in("id", incomeIds);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
 }
 
 export async function suggestCategoryColor(label: string, usedColors: string[] = []) {

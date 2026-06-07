@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import {
   getCategoryData,
+  getIncomeCategoryBreakdown,
   getMonthlySpendingComparison,
   getNetWorth,
 } from "@/lib/aggregates";
@@ -18,11 +19,12 @@ export async function GET() {
 
     const { supabase, user } = auth;
 
-    const [netWorth, spendingComparison, { topCategories, categoryBreakdown }] =
+    const [netWorth, spendingComparison, { topCategories, categoryBreakdown }, incomeBreakdown] =
       await Promise.all([
         getNetWorth(supabase),
         getMonthlySpendingComparison(supabase),
         getCategoryData(supabase, user.id, 3),
+        getIncomeCategoryBreakdown(supabase, user.id),
       ]);
 
     return NextResponse.json({
@@ -30,6 +32,7 @@ export async function GET() {
       spendingComparison,
       topCategories,
       categoryBreakdown,
+      incomeBreakdown,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch overview stats";

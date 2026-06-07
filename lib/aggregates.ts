@@ -4,6 +4,7 @@ import {
   buildCategoryMap,
   resolveCategoryColor,
   resolveCategoryLabel,
+  ensureDefaultCategories,
   seedCategoriesIfEmpty,
   type Category,
 } from "@/lib/categories";
@@ -91,7 +92,7 @@ async function buildCategoryTotals(supabase: SupabaseClient, userId: string) {
   const range = getMonthRange(0);
   const [transactions, categories] = await Promise.all([
     fetchTransactionsInRange(supabase, range.start, range.end),
-    seedCategoriesIfEmpty(supabase, userId),
+    ensureDefaultCategories(supabase, userId),
   ]);
   const categoryMap = buildCategoryMap(categories);
   const totals = new Map<string, number>();
@@ -101,6 +102,33 @@ async function buildCategoryTotals(supabase: SupabaseClient, userId: string) {
     totals.set(
       transaction.category_id,
       (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount_usd)
+    );
+  }
+
+  return Array.from(totals.entries())
+    .map(([categoryId, amount]) => ({
+      categoryId,
+      label: resolveCategoryLabel(categoryId, categoryMap),
+      color: resolveCategoryColor(categoryId, categoryMap),
+      amount,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+async function buildIncomeCategoryTotals(supabase: SupabaseClient, userId: string) {
+  const range = getMonthRange(0);
+  const [transactions, categories] = await Promise.all([
+    fetchTransactionsInRange(supabase, range.start, range.end),
+    ensureDefaultCategories(supabase, userId),
+  ]);
+  const categoryMap = buildCategoryMap(categories);
+  const totals = new Map<string, number>();
+
+  for (const transaction of transactions) {
+    if (transaction.amount_usd >= 0) continue;
+    totals.set(
+      transaction.category_id,
+      (totals.get(transaction.category_id) ?? 0) + Math.abs(Number(transaction.amount_usd))
     );
   }
 
@@ -124,6 +152,15 @@ export async function getTopCategories(
 
 export async function getCategoryBreakdown(supabase: SupabaseClient, userId: string) {
   return (await buildCategoryTotals(supabase, userId)).map(
+    ({ categoryId, label, color, amount }) => ({ categoryId, name: label, color, amount })
+  );
+}
+
+export async function getIncomeCategoryBreakdown(
+  supabase: SupabaseClient,
+  userId: string
+) {
+  return (await buildIncomeCategoryTotals(supabase, userId)).map(
     ({ categoryId, label, color, amount }) => ({ categoryId, name: label, color, amount })
   );
 }

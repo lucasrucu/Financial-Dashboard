@@ -1,6 +1,7 @@
-import type { SpendingCategoryId } from "@/constants/categories";
+import type { CategoryId } from "@/constants/categories";
 
-const BCP_CATEGORY_RULES: Array<{ pattern: RegExp; categoryId: SpendingCategoryId }> = [
+const BCP_CATEGORY_RULES: Array<{ pattern: RegExp; categoryId: CategoryId }> = [
+  { pattern: /sueldo|nomina|nómina|payroll|salary|haberes/i, categoryId: "salary" },
   { pattern: /spotify|netflix|disney|prime/i, categoryId: "subscriptions" },
   { pattern: /uber|pyu\*uber|dlc\*rides|viajes/i, categoryId: "transport" },
   { pattern: /pedidosya|trattori|petrosur|brisa|market|restaurant/i, categoryId: "food" },
@@ -11,7 +12,7 @@ const BCP_CATEGORY_RULES: Array<{ pattern: RegExp; categoryId: SpendingCategoryI
   { pattern: /impuesto|itf|mant\. cuenta/i, categoryId: "other" },
 ];
 
-export function mapBcpCategory(description: string): SpendingCategoryId {
+export function mapBcpCategory(description: string): CategoryId {
   for (const rule of BCP_CATEGORY_RULES) {
     if (rule.pattern.test(description)) {
       return rule.categoryId;

@@ -22,6 +22,11 @@ const SpendingChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-72 w-full rounded-lg" /> }
 );
 
+const IncomeChart = dynamic(
+  () => import("@/components/dashboard/IncomeChart").then((m) => m.IncomeChart),
+  { ssr: false, loading: () => <Skeleton className="h-72 w-full rounded-lg" /> }
+);
+
 interface OverviewStats {
   netWorth: number;
   spendingComparison: {
@@ -42,27 +47,60 @@ interface OverviewStats {
     color: string;
     amount: number;
   }>;
+  incomeBreakdown: Array<{
+    categoryId: string;
+    name: string;
+    color: string;
+    amount: number;
+  }>;
 }
 
-async function fetchOverviewStats() {
+const EMPTY_OVERVIEW: OverviewStats = {
+  netWorth: 0,
+  spendingComparison: {
+    currentSpending: 0,
+    previousSpending: 0,
+    delta: 0,
+    percentChange: 0,
+  },
+  topCategories: [],
+  categoryBreakdown: [],
+  incomeBreakdown: [],
+};
+
+async function fetchOverviewStats(): Promise<OverviewStats> {
   const response = await fetch("/api/overview");
   if (!response.ok) {
     throw new Error("Failed to fetch overview stats");
   }
-  return response.json() as Promise<OverviewStats>;
+  const payload = (await response.json()) as Partial<OverviewStats>;
+  return {
+    ...EMPTY_OVERVIEW,
+    ...payload,
+    spendingComparison: {
+      ...EMPTY_OVERVIEW.spendingComparison,
+      ...payload.spendingComparison,
+    },
+    topCategories: payload.topCategories ?? [],
+    categoryBreakdown: payload.categoryBreakdown ?? [],
+    incomeBreakdown: payload.incomeBreakdown ?? [],
+  };
 }
 
 export function OverviewContent() {
   const { formatAmount } = useCurrency();
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["overview"],
     queryFn: fetchOverviewStats,
     placeholderData: keepPreviousData,
+    retry: 2,
   });
 
-  const spending = data?.spendingComparison;
-  const isSpendingUp = (spending?.delta ?? 0) > 0;
-  const maxCategoryAmount = data?.topCategories[0]?.amount ?? 1;
+  const overview = data ?? EMPTY_OVERVIEW;
+  const spending = overview.spendingComparison;
+  const isSpendingUp = (spending.delta ?? 0) > 0;
+  const maxCategoryAmount = overview.topCategories[0]?.amount ?? 1;
+  const showOverviewError = Boolean(error) && !isFetching && !isLoading;
 
   return (
     <div className="space-y-6">
@@ -80,10 +118,10 @@ export function OverviewContent() {
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-9 w-32" />
-            ) : error ? (
+            ) : showOverviewError ? (
               <p className="text-sm text-negative">Unable to load net worth</p>
             ) : (
-              <p className="text-3xl font-semibold">{formatAmount(data?.netWorth ?? 0)}</p>
+              <p className="text-3xl font-semibold">{formatAmount(overview.netWorth)}</p>
             )}
           </CardContent>
         </Card>
@@ -99,7 +137,7 @@ export function OverviewContent() {
                 <Skeleton className="h-9 w-32" />
                 <Skeleton className="h-4 w-48" />
               </div>
-            ) : error || !spending ? (
+            ) : showOverviewError ? (
               <p className="text-sm text-negative">Unable to load spending comparison</p>
             ) : (
               <>
@@ -148,10 +186,12 @@ export function OverviewContent() {
                 </div>
               ))}
             </div>
-          ) : !data?.topCategories.length ? (
+          ) : showOverviewError ? (
+            <p className="text-sm text-negative">Unable to load category breakdown</p>
+          ) : !overview.topCategories.length ? (
             <p className="text-sm text-muted-foreground">No category data yet.</p>
           ) : (
-            data.topCategories.map((category) => {
+            overview.topCategories.map((category) => {
               const width = `${(category.amount / maxCategoryAmount) * 100}%`;
 
               return (
@@ -175,7 +215,10 @@ export function OverviewContent() {
         </CardContent>
       </Card>
 
-      <SpendingChart data={data?.categoryBreakdown ?? []} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SpendingChart data={overview.categoryBreakdown} />
+        <IncomeChart data={overview.incomeBreakdown} />
+      </div>
 
       <div>
         <h3 className="mb-4 text-lg font-semibold">Savings Goals</h3>

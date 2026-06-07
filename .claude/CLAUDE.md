@@ -91,8 +91,9 @@ stores/                 # Zustand stores (currencyStore.ts, aiInsightStore.ts)
 types/                  # TypeScript interfaces per domain
 constants/              # categories.ts, currencies.ts
 supabase/
-  schema.sql            # Complete schema — run once per environment
-  migrations/           # Incremental SQL migrations (timestamped)
+  setup.sql             # Create database — run once per environment
+  reset.sql             # Wipe financial data — keeps login
+  migrations/           # Legacy upgrades only
 ```
 
 ---
@@ -107,10 +108,44 @@ supabase/
 
 ---
 
-## Git Conventions
+## Git Workflow
 
-- Branches: `feature/`, `fix/`, `chore/`
-- Commits: conventional (`feat:`, `fix:`, `chore:`, `refactor:`)
+Follow Git Flow-style branching. Cursor equivalent: `.cursor/rules/git-workflow.mdc`.
+
+### Branch naming
+
+| Prefix | Use |
+|--------|-----|
+| `feature/` | New functionality (default) |
+| `fix/` | Bug fixes |
+| `chore/` | Tooling, deps, config |
+
+### Auto-create branches
+
+When starting new feature work, bug fixes, or chore tasks:
+
+1. Check the current branch (`git branch --show-current`).
+2. If on `master`, automatically create and switch to a prefixed branch before writing code.
+3. Never commit directly to `master`.
+
+### Auto-create commits
+
+Create commits automatically as work completes — do not wait for the user to ask.
+
+- One logical change per commit; stage only relevant files.
+- Use Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`.
+- Professional messages: imperative mood, concise subject, body explaining *why* when non-obvious.
+- Never commit `.env.local` or secrets.
+
+### Merge gate (user confirmation required)
+
+- **Never** merge into `master`, push to `master`, or open a merge PR unless the user explicitly requests it.
+- **Never** force-push to `master`.
+- **Never** skip hooks unless the user explicitly asks.
+
+When a feature is complete, remind the user:
+
+> Work is on `feature/...`. Say when you want me to merge into `master`.
 
 ---
 

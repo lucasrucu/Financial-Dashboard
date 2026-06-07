@@ -1,13 +1,13 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-import type { SpendingCategoryId } from "@/constants/categories";
+import type { CategoryId } from "@/constants/categories";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const PLAID_CATEGORY_MAP: Record<string, SpendingCategoryId> = {
+const PLAID_CATEGORY_MAP: Record<string, CategoryId> = {
   FOOD_AND_DRINK: "food",
   TRANSPORTATION: "transport",
   GENERAL_MERCHANDISE: "shopping",
@@ -19,7 +19,7 @@ const PLAID_CATEGORY_MAP: Record<string, SpendingCategoryId> = {
   TRAVEL: "entertainment",
   TRANSFER_IN: "savings",
   TRANSFER_OUT: "savings",
-  INCOME: "savings",
+  INCOME: "salary",
   LOAN_PAYMENTS: "rent",
   BANK_FEES: "other",
   GOVERNMENT_AND_NON_PROFIT: "other",
@@ -29,7 +29,7 @@ const PLAID_CATEGORY_MAP: Record<string, SpendingCategoryId> = {
 
 export function mapPlaidCategory(
   plaidCategory: string[] | null | undefined
-): SpendingCategoryId {
+): CategoryId {
   if (!plaidCategory?.length) {
     return "other";
   }

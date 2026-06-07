@@ -3,7 +3,12 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
-import { seedCategoriesIfEmpty, suggestCategoryColor } from "@/lib/categories";
+import {
+  backfillIncomeCategories,
+  ensureDefaultCategories,
+  seedCategoriesIfEmpty,
+  suggestCategoryColor,
+} from "@/lib/categories";
 import type { CategoryCreatePayload } from "@/types/category";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +20,8 @@ export async function GET() {
       return auth.unauthorized;
     }
 
-    const categories = await seedCategoriesIfEmpty(auth.supabase, auth.user.id);
+    const categories = await ensureDefaultCategories(auth.supabase, auth.user.id);
+    await backfillIncomeCategories(auth.supabase, auth.user.id);
 
     return NextResponse.json({
       categories: categories.map((category) => ({

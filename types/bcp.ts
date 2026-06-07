@@ -1,4 +1,4 @@
-import type { SpendingCategoryId } from "@/constants/categories";
+import type { CategoryId } from "@/constants/categories";
 
 export interface BcpStatementPeriod {
   start: string;
@@ -10,7 +10,7 @@ export interface BcpParsedTransaction {
   description: string;
   amountPen: number;
   type: "debit" | "credit";
-  categoryId: SpendingCategoryId;
+  categoryId: CategoryId;
 }
 
 export interface BcpParsedStatement {
@@ -56,7 +56,7 @@ export interface BcpImportPayload {
     amountPen: number;
     amountUsd: number;
     type: "debit" | "credit";
-    categoryId: SpendingCategoryId;
+    categoryId: CategoryId;
   }>;
   force?: boolean;
 }

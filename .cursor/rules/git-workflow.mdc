@@ -1,0 +1,66 @@
+---
+description: Git branch, commit, and merge conventions for this repo
+alwaysApply: true
+---
+
+# Git Workflow
+
+Follow Git Flow-style branching. See also `.claude/CLAUDE.md` for the Claude Code equivalent.
+
+## Branch naming
+
+| Prefix | Use |
+|--------|-----|
+| `feature/` | New functionality (default) |
+| `fix/` | Bug fixes |
+| `chore/` | Tooling, deps, config |
+
+Examples: `feature/income-tracking`, `fix/overview-crash`, `chore/update-deps`
+
+## Auto-create branches
+
+When starting **new feature work**, **bug fixes**, or **chore tasks**:
+
+1. Check the current branch (`git branch --show-current`).
+2. If on `master` (default branch), automatically create and switch to an appropriately prefixed branch before writing code:
+   - New functionality → `feature/<short-kebab-description>`
+   - Bug fix → `fix/<short-kebab-description>`
+   - Tooling/config → `chore/<short-kebab-description>`
+3. Never commit directly to `master`.
+
+## Auto-create commits
+
+Create commits automatically as work completes — do not wait for the user to ask.
+
+**Commit discipline:**
+
+- One logical change per commit; keep commits focused and reviewable.
+- Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`.
+- Write professional messages: imperative mood, concise subject (≤ 72 chars), optional body explaining *why* when non-obvious.
+- Stage only files relevant to that change — never bundle unrelated work.
+- Never commit `.env.local`, credentials, or secrets.
+
+**Examples:**
+
+```
+feat: add income pie chart and salary categories
+
+Income transactions were invisible on the dashboard. Adds income
+breakdown aggregation, dedicated categories, and a second pie chart.
+```
+
+```
+fix: guard optional chaining on overview topCategories
+```
+
+## Merge gate (user confirmation required)
+
+- **Never** merge into `master`, push to `master`, or open a merge PR unless the user explicitly requests it.
+- **Never** force-push to `master`.
+- **Never** skip hooks (`--no-verify`) unless the user explicitly asks.
+
+## Merge reminder
+
+When a feature is complete, or at the end of a session with unmerged work on a feature branch, remind the user:
+
+> Work is on `feature/...`. Say when you want me to merge into `master`.
