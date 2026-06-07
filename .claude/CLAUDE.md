@@ -136,12 +136,25 @@ Create commits automatically as work completes — do not wait for the user to a
 - Use Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`.
 - Professional messages: imperative mood, concise subject, body explaining *why* when non-obvious.
 - Never commit `.env.local` or secrets.
+- **No AI attribution** — commits must look human-authored only. Never add `Co-authored-by`, `Signed-off-by`, or any trailer referencing Cursor, Claude, Copilot, or other AI tools. Cursor may inject a `Co-authored-by` trailer via its commit hook — always amend it out before pushing. Use `--no-verify` only for that cleanup amend, not to bypass other checks.
 
 ### Merge gate (user confirmation required)
 
 - **Never** merge into `master`, push to `master`, or open a merge PR unless the user explicitly requests it.
 - **Never** force-push to `master`.
 - **Never** skip hooks unless the user explicitly asks.
+
+### Post-merge flow (run when user confirms merge)
+
+After a successful merge into `master`, complete the full sync — do not stop at the local merge:
+
+1. **Fetch** — `git fetch origin`
+2. **Check incoming changes** — if `origin/master` is ahead of local `master`, merge `origin/master` into `master` and resolve conflicts before continuing.
+3. **Clean up branches** — delete local branches fully merged into `master` (e.g. `git branch -d feature/...`). Delete the remote branch too if it exists and was merged (`git push origin --delete feature/...`).
+4. **Sync to remote** — `git push origin master`
+5. **Verify** — `git status` should show `master...origin/master` with no ahead/behind drift.
+
+Only stop early if a merge conflict or push rejection needs user input.
 
 When a feature is complete, remind the user:
 
