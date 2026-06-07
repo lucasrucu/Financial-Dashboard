@@ -10,20 +10,23 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const auth = await requireUser();
     if (auth.unauthorized) {
       return auth.unauthorized;
     }
 
+    const { searchParams } = new URL(request.url);
+    const monthOffset = Number(searchParams.get("monthOffset") ?? "0");
+
     const { supabase, user } = auth;
 
     const [netWorth, spendingComparison, { topCategories, categoryBreakdown }, incomeBreakdown] =
       await Promise.all([
         getNetWorth(supabase),
-        getMonthlySpendingComparison(supabase),
-        getCategoryData(supabase, user.id, 3),
+        getMonthlySpendingComparison(supabase, monthOffset),
+        getCategoryData(supabase, user.id, 3, monthOffset),
         getIncomeCategoryBreakdown(supabase, user.id),
       ]);
 

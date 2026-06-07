@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
-import type { GoalUpdatePayload } from "@/types/goal";
+import type { GoalCreatePayload } from "@/types/goal";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +12,12 @@ export async function GET() {
       return auth.unauthorized;
     }
 
-    const { supabase } = auth;
-    const { data, error } = await supabase.from("goals").select("*").order("name");
+    const { supabase, user } = auth;
+    const { data, error } = await supabase
+      .from("goals")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("name");
 
     if (error) {
       throw new Error(error.message);
@@ -32,42 +36,32 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: Request) {
+export async function POST(request: Request) {
   try {
     const auth = await requireUser();
     if (auth.unauthorized) {
       return auth.unauthorized;
     }
 
-    const { supabase } = auth;
-    const body = (await request.json()) as GoalUpdatePayload & { id?: string };
+    const body = (await request.json()) as GoalCreatePayload;
 
-    if (!body.id) {
-      return NextResponse.json({ error: "Missing goal id" }, { status: 400 });
+    if (!body.name?.trim()) {
+      return NextResponse.json({ error: "Missing goal name" }, { status: 400 });
     }
 
-    const updates: GoalUpdatePayload = {};
-
-    if (body.name !== undefined) {
-      updates.name = body.name;
+    if (body.target_usd === undefined || body.target_usd <= 0) {
+      return NextResponse.json({ error: "Target must be greater than zero" }, { status: 400 });
     }
 
-    if (body.target_usd !== undefined) {
-      updates.target_usd = body.target_usd;
-    }
-
-    if (body.saved_usd !== undefined) {
-      updates.saved_usd = body.saved_usd;
-    }
-
-    if (body.deadline !== undefined) {
-      updates.deadline = body.deadline;
-    }
-
-    const { data, error } = await supabase
+    const { data, error } = await auth.supabase
       .from("goals")
-      .update(updates)
-      .eq("id", body.id)
+      .insert({
+        user_id: auth.user.id,
+        name: body.name.trim(),
+        target_usd: body.target_usd,
+        saved_usd: body.saved_usd ?? 0,
+        deadline: body.deadline ?? null,
+      })
       .select("*")
       .single();
 
@@ -75,15 +69,18 @@ export async function PATCH(request: Request) {
       throw new Error(error.message);
     }
 
-    return NextResponse.json({
-      goal: {
-        ...data,
-        target_usd: Number(data.target_usd),
-        saved_usd: Number(data.saved_usd),
+    return NextResponse.json(
+      {
+        goal: {
+          ...data,
+          target_usd: Number(data.target_usd),
+          saved_usd: Number(data.saved_usd),
+        },
       },
-    });
+      { status: 201 }
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to update goal";
+    const message = error instanceof Error ? error.message : "Failed to create goal";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -12,3 +12,10 @@ export interface GoalUpdatePayload {
   deadline?: string | null;
   name?: string;
 }
+
+export interface GoalCreatePayload {
+  name: string;
+  target_usd: number;
+  saved_usd?: number;
+  deadline?: string | null;
+}
