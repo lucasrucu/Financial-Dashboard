@@ -235,7 +235,7 @@ export function BankAccountCard() {
         <CardDescription>
           {data?.connected
             ? `${data.institution_name ?? "Connected bank"} · Last synced ${formatRelativeTime(data.last_synced_at)}`
-            : "Connect your Plaid sandbox account or import a BCP statement to get started"}
+            : "Connect a US bank via Plaid or import a BCP statement to get started"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -261,7 +261,7 @@ export function BankAccountCard() {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No bank connected yet. Use Plaid sandbox credentials to link an account.
+            No bank connected yet. Click Connect Bank to link an account.
           </p>
         )}
 

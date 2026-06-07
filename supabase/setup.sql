@@ -1,6 +1,23 @@
--- Financial Dashboard — complete schema
--- Run once per environment (dev or production) via the Supabase SQL Editor.
--- All statements are idempotent (IF NOT EXISTS / IF NOT EXISTS on indexes).
+-- =============================================================================
+-- SETUP DATABASE — Financial Dashboard
+-- =============================================================================
+--
+-- Run this ONCE when setting up a new Supabase project (local or production).
+-- Safe to re-run — uses IF NOT EXISTS / DROP POLICY IF EXISTS throughout.
+--
+-- HOW TO RUN
+--   1. Open Supabase Dashboard → SQL Editor → New query
+--   2. Paste this entire file
+--   3. Click Run
+--   4. Configure Google OAuth in Authentication → Providers (see README.md)
+--
+-- OTHER SCRIPTS
+--   reset.sql  — wipe financial data and start fresh (keeps your login)
+--
+-- You do NOT need anything in supabase/migrations/ for a new project.
+-- Migrations are only for upgrading very old databases — see that folder.
+--
+-- =============================================================================
 
 create extension if not exists "pgcrypto";
 
@@ -213,5 +230,5 @@ drop policy if exists "exchange_rates_insert_auth" on exchange_rates;
 create policy "exchange_rates_insert_auth" on exchange_rates for insert to authenticated with check (true);
 
 -- ─── Seed Data ────────────────────────────────────────────────────────────────
--- Starter goals are inserted per-user via the app on first login/migration.
+-- Starter goals are inserted per-user via the app on first login.
 -- System categories are seeded via GET /api/categories when a user has none.

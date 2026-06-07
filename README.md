@@ -174,10 +174,12 @@ cp .env.example .env.local
 Run the full schema against your Supabase project once:
 
 ```
-Supabase Dashboard → SQL Editor → paste contents of supabase/schema.sql → Run
+Supabase Dashboard → SQL Editor → paste contents of `supabase/setup.sql` → Run
 ```
 
-If upgrading an existing database that predates auth, also run `supabase/migrations/20260529000000_auth_and_categories.sql`.
+If upgrading an existing database that predates auth, also run `supabase/migrations/20260529000000_auth_and_categories.sql` (new projects can skip this).
+
+To wipe financial data and start fresh (e.g. sandbox → production Plaid), run `supabase/reset.sql` — see the comments at the top of that file.
 
 ### 4. Configure Supabase Auth (Google OAuth)
 
@@ -234,7 +236,9 @@ stores/               # Zustand stores
 types/                # TypeScript interfaces, one file per domain
 constants/            # Shared enums and lookup tables
 supabase/
-  schema.sql          # Complete database schema — run once per environment
+  setup.sql           # Create database — run once per environment
+  reset.sql           # Wipe financial data — keeps your login
+  migrations/         # Legacy upgrades only (skip for new projects)
 ```
 
 ---
@@ -261,7 +265,7 @@ The app is designed to deploy on [Vercel](https://vercel.com). Push to `master` 
 
 **Environment variables** — set the same variables from `.env.local` in Vercel → Project → Settings → Environment Variables. No `.env` file is needed on the server; Vercel injects them at runtime.
 
-**Database** — use a separate Supabase project for production. Run `supabase/schema.sql` once against it before the first deploy.
+**Database** — use a separate Supabase project for production. Run `supabase/setup.sql` once against it before the first deploy.
 
 **Plaid environment** — set `PLAID_ENV=development` and use your Development secret for production. Sandbox is for local development only.
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import type { TransactionFilters, TransactionListResponse } from "@/types/transaction";
 
@@ -74,4 +74,42 @@ export async function updateTransactionCategory(id: string, categoryId: string) 
   }
 
   return response.json();
+}
+
+export async function batchUpdateTransactionCategories(ids: string[], categoryId: string) {
+  const response = await fetch("/api/plaid/transactions", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids, category_id: categoryId }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update categories");
+  }
+
+  return response.json();
+}
+
+export function patchTransactionsCache(
+  queryClient: QueryClient,
+  filters: TransactionFilters,
+  ids: string[],
+  categoryId: string
+) {
+  const idSet = new Set(ids);
+
+  queryClient.setQueryData<TransactionListResponse>(["transactions", filters], (old) => {
+    if (!old) {
+      return old;
+    }
+
+    return {
+      ...old,
+      transactions: old.transactions.map((transaction) =>
+        idSet.has(transaction.id)
+          ? { ...transaction, category_id: categoryId }
+          : transaction
+      ),
+    };
+  });
 }

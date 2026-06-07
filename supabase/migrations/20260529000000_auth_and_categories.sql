@@ -1,5 +1,12 @@
--- Migration for existing databases (pre-auth) — run once in Supabase SQL Editor.
--- Adds user_id columns, categories table, category_source, and RLS policies.
+-- LEGACY MIGRATION — skip this if you used supabase/setup.sql on a new project.
+--
+-- What is a migration?
+--   A small, incremental change applied to an OLD database that already had data
+--   before a feature was added. This one adds user_id columns and auth support
+--   for databases created before Google login existed.
+--
+-- New users: run supabase/setup.sql only. Do NOT run this file.
+-- Old users: run this once if your database predates auth, then you are done.
 
 alter table plaid_items add column if not exists user_id uuid references auth.users(id) on delete cascade;
 alter table accounts add column if not exists user_id uuid references auth.users(id) on delete cascade;
@@ -9,7 +16,7 @@ alter table goals add column if not exists user_id uuid references auth.users(id
 alter table statement_imports add column if not exists user_id uuid references auth.users(id) on delete cascade;
 alter table ai_cache add column if not exists user_id uuid references auth.users(id) on delete cascade;
 
--- Categories table (if not created via full schema.sql)
+-- Categories table (if not created via full setup.sql)
 create table if not exists categories (
   id         text        not null,
   user_id    uuid        not null references auth.users(id) on delete cascade,

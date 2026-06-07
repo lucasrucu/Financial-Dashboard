@@ -131,15 +131,41 @@ export async function PATCH(request: Request) {
       return auth.unauthorized;
     }
 
-    const { supabase } = auth;
+    const { supabase, user } = auth;
     const body = (await request.json()) as {
       id?: string;
+      ids?: string[];
       category_id?: string;
     };
 
-    if (!body.id || !body.category_id) {
+    if (!body.category_id) {
       return NextResponse.json(
-        { error: "Missing id or category_id" },
+        { error: "Missing category_id" },
+        { status: 400 }
+      );
+    }
+
+    if (body.ids?.length) {
+      const { data, error } = await supabase
+        .from("transactions")
+        .update({ category_id: body.category_id, category_source: "manual" })
+        .in("id", body.ids)
+        .eq("user_id", user.id)
+        .select("*");
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return NextResponse.json({
+        transactions: data ?? [],
+        updated: data?.length ?? 0,
+      });
+    }
+
+    if (!body.id) {
+      return NextResponse.json(
+        { error: "Missing id or ids" },
         { status: 400 }
       );
     }
@@ -148,6 +174,7 @@ export async function PATCH(request: Request) {
       .from("transactions")
       .update({ category_id: body.category_id, category_source: "manual" })
       .eq("id", body.id)
+      .eq("user_id", user.id)
       .select("*")
       .single();
 

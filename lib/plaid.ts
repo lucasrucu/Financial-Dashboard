@@ -47,7 +47,8 @@ export async function createLinkToken(userId = "single-user") {
   const response = await client.linkTokenCreate({
     user: { client_user_id: userId },
     client_name: "Financial Dashboard",
-    products: [Products.Transactions, Products.Balance],
+    // Balance is auto-included in production when Transactions is set; listing it explicitly fails.
+    products: [Products.Transactions],
     country_codes: [CountryCode.Us],
     language: "en",
   });

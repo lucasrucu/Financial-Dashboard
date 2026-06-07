@@ -46,7 +46,7 @@ cp .env.example .env.local
 # Fill in all required values
 
 # 3. Run the full schema via Supabase SQL Editor:
-#   supabase/schema.sql
+#   supabase/setup.sql
 
 # 4. Start dev server
 npm run dev

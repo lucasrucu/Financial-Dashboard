@@ -15,8 +15,16 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as BcpImportPayload;
 
-    if (!body.fileHash || !body.accountCode || !body.period?.start || !body.period?.end) {
-      return NextResponse.json({ error: "Missing import payload fields" }, { status: 400 });
+    if (!body.fileHash) {
+      return NextResponse.json({ error: "Missing fileHash" }, { status: 400 });
+    }
+
+    if (!body.accountCode) {
+      return NextResponse.json({ error: "Missing accountCode" }, { status: 400 });
+    }
+
+    if (!body.period?.start || !body.period?.end) {
+      return NextResponse.json({ error: "Missing statement period" }, { status: 400 });
     }
 
     if (!Array.isArray(body.transactions) || body.transactions.length === 0) {

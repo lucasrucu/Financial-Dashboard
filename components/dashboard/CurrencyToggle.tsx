@@ -16,7 +16,7 @@ export function CurrencyToggle() {
           size="sm"
           variant="ghost"
           className={cn(
-            "h-7 rounded-md px-3 text-xs shadow-none",
+            "h-7 rounded-lg px-3 text-xs shadow-none",
             currency === code
               ? "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"

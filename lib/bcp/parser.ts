@@ -67,6 +67,34 @@ function toIsoDate(value: string): string {
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
+const ACCOUNT_HEADER_PATTERN =
+  /(\d{3}-\d{8}-\d-\d{2})\s+(SOLES|US\s*DOLAR(?:ES)?|DÓLARES?|USD)/i;
+
+function normalizeBcpCurrency(raw: string): "SOLES" | "USD" {
+  const normalized = raw.replace(/\s+/g, " ").trim().toUpperCase();
+
+  if (normalized === "SOLES") {
+    return "SOLES";
+  }
+
+  return "USD";
+}
+
+export function parseAccountHeaderLine(
+  line: string
+): { accountCode: string; currency: "SOLES" | "USD" } | null {
+  const match = line.match(ACCOUNT_HEADER_PATTERN);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    accountCode: match[1],
+    currency: normalizeBcpCurrency(match[2]),
+  };
+}
+
 function parseTransactionLine(
   line: string,
   items: Array<{ x: number; str: string }>,
@@ -132,11 +160,11 @@ function parseHeaderAndFooter(
   let totalCreditsPen: number | null = null;
 
   for (const line of allLines) {
-    const accountMatch = line.match(/(\d{3}-\d{8}-\d-\d{2})\s+(SOLES|USD)/i);
+    const accountHeader = parseAccountHeaderLine(line);
 
-    if (accountMatch) {
-      accountCode = accountMatch[1];
-      currency = accountMatch[2].toUpperCase();
+    if (accountHeader) {
+      accountCode = accountHeader.accountCode;
+      currency = accountHeader.currency;
     }
 
     const periodMatch = parseStatementPeriod(line);

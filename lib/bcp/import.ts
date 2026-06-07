@@ -38,8 +38,18 @@ export async function parseBcpStatementFile(
   const parsed = parseBcpStatement(pages);
   const rateCache = new Map<string, number>();
   const transactions: BcpPreviewTransaction[] = [];
+  const isUsdAccount = isBcpUsdAccount(parsed.currency);
 
   for (const transaction of parsed.transactions) {
+    if (isUsdAccount) {
+      transactions.push({
+        ...transaction,
+        amountUsd: transaction.amountPen,
+        usdToPen: 1,
+      });
+      continue;
+    }
+
     const usdToPen = await fetchHistoricalUsdToPen(transaction.date, rateCache);
     const amountUsd = convertPenToUsd(transaction.amountPen, usdToPen);
 
@@ -105,6 +115,16 @@ function accountMask(accountCode: string): string {
   return digits.slice(-4) || accountCode;
 }
 
+function isBcpUsdAccount(currency: string): boolean {
+  return currency.toUpperCase() === "USD";
+}
+
+function bcpAccountName(currency: string): string {
+  return isBcpUsdAccount(currency)
+    ? "BCP Cuenta Digital (USD)"
+    : "BCP Cuenta Digital (Soles)";
+}
+
 export async function importBcpStatement(
   supabase: SupabaseClient,
   userId: string,
@@ -125,11 +145,16 @@ export async function importBcpStatement(
 
   const plaidItemId = await ensureBcpPlaidItem(supabase, userId);
   const plaidAccountId = buildPlaidAccountId(payload.accountCode);
-  const closingRate = await fetchHistoricalUsdToPen(payload.period.end);
+  const isUsdAccount = isBcpUsdAccount(payload.currency);
   const closingBalanceUsd =
     payload.closingBalancePen === null
       ? null
-      : convertPenToUsd(payload.closingBalancePen, closingRate);
+      : isUsdAccount
+        ? payload.closingBalancePen
+        : convertPenToUsd(
+            payload.closingBalancePen,
+            await fetchHistoricalUsdToPen(payload.period.end)
+          );
 
   const { data: existingAccount } = await supabase
     .from("accounts")
@@ -149,7 +174,7 @@ export async function importBcpStatement(
     plaid_account_id: plaidAccountId,
     plaid_item_id: plaidItemId,
     user_id: userId,
-    name: "BCP Cuenta Digital",
+    name: bcpAccountName(payload.currency),
     mask: accountMask(payload.accountCode),
     subtype: "savings",
   };

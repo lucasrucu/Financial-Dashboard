@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, Search, X } from "lucide-react";
+import { toast } from "sonner";
 
+import { CategoryLabel } from "@/components/dashboard/CategoryLabel";
 import { ColumnFilterPopover } from "@/components/dashboard/ColumnFilterPopover";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Pagination,
@@ -30,13 +33,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAccounts } from "@/hooks/useAccounts";
-import { useCategories } from "@/hooks/useCategories";
+import { getCategoryById, useCategories } from "@/hooks/useCategories";
 import { useCurrency } from "@/hooks/useCurrency";
 import {
+  batchUpdateTransactionCategories,
+  patchTransactionsCache,
   updateTransactionCategory,
   useTransactions,
 } from "@/hooks/useTransactions";
 import { cn, formatDate } from "@/lib/utils";
+import type { Category } from "@/types/category";
+import type { TransactionListResponse } from "@/types/transaction";
 import type { TransactionSortBy, TransactionSortOrder } from "@/types/transaction";
 
 const PAGE_SIZE = 25;
@@ -44,6 +51,36 @@ const DEFAULT_SORT_BY: TransactionSortBy = "date";
 const DEFAULT_SORT_ORDER: TransactionSortOrder = "desc";
 
 type FilterColumn = "date" | "name" | "category" | "account" | "amount_usd";
+
+function CategorySelectItems({ categories }: { categories: Category[] }) {
+  return (
+    <>
+      {categories.map((category) => (
+        <SelectItem key={category.id} value={category.id}>
+          <CategoryLabel category={category} />
+        </SelectItem>
+      ))}
+    </>
+  );
+}
+
+function CategorySelectTrigger({
+  categoryId,
+  categories,
+  className,
+}: {
+  categoryId: string;
+  categories: Category[] | undefined;
+  className?: string;
+}) {
+  const category = getCategoryById(categories, categoryId);
+
+  return (
+    <SelectTrigger className={className}>
+      {category ? <CategoryLabel category={category} /> : <SelectValue />}
+    </SelectTrigger>
+  );
+}
 
 function SortControls({
   column,
@@ -137,6 +174,8 @@ export function TransactionTable() {
     useState<TransactionSortOrder>(DEFAULT_SORT_ORDER);
   const [page, setPage] = useState(1);
   const [openColumn, setOpenColumn] = useState<FilterColumn | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkCategoryId, setBulkCategoryId] = useState("");
 
   const filters = useMemo(
     () => ({
@@ -157,14 +196,62 @@ export function TransactionTable() {
     setPage(1);
   }, [search, categoryId, accountId, startDate, endDate, sortBy, sortOrder]);
 
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, search, categoryId, accountId, startDate, endDate, sortBy, sortOrder]);
+
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
   const { data, isLoading, error, isFetching } = useTransactions(filters);
 
+  const pageTransactionIds = useMemo(
+    () => data?.transactions.map((transaction) => transaction.id) ?? [],
+    [data?.transactions]
+  );
+
+  const allPageSelected =
+    pageTransactionIds.length > 0 &&
+    pageTransactionIds.every((id) => selectedIds.has(id));
+  const somePageSelected =
+    pageTransactionIds.some((id) => selectedIds.has(id)) && !allPageSelected;
+
   const categoryMutation = useMutation({
-    mutationFn: ({ id, category_id }: { id: string; category_id: string }) =>
-      updateTransactionCategory(id, category_id),
-    onSuccess: () => {
+    mutationFn: async ({
+      ids,
+      category_id,
+    }: {
+      ids: string[];
+      category_id: string;
+    }) => {
+      if (ids.length === 1) {
+        return updateTransactionCategory(ids[0], category_id);
+      }
+
+      return batchUpdateTransactionCategories(ids, category_id);
+    },
+    onMutate: async ({ ids, category_id }) => {
+      await queryClient.cancelQueries({ queryKey: ["transactions"] });
+      const previous = queryClient.getQueryData<TransactionListResponse>([
+        "transactions",
+        filters,
+      ]);
+      patchTransactionsCache(queryClient, filters, ids, category_id);
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["transactions", filters], context.previous);
+      }
+
+      toast.error("Failed to update category");
+    },
+    onSuccess: (_data, { ids }) => {
+      if (ids.length > 1) {
+        setSelectedIds(new Set());
+        setBulkCategoryId("");
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["overview"] });
     },
@@ -201,6 +288,40 @@ export function TransactionTable() {
     setSortOrder(DEFAULT_SORT_ORDER);
   }
 
+  function toggleRowSelection(id: string, checked: boolean) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+
+      return next;
+    });
+  }
+
+  function toggleSelectAllOnPage(checked: boolean) {
+    if (!checked) {
+      setSelectedIds(new Set());
+      return;
+    }
+
+    setSelectedIds(new Set(pageTransactionIds));
+  }
+
+  function applyBulkCategory() {
+    if (!bulkCategoryId || selectedIds.size === 0) {
+      return;
+    }
+
+    categoryMutation.mutate({
+      ids: Array.from(selectedIds),
+      category_id: bulkCategoryId,
+    });
+  }
+
   const total = data?.total ?? 0;
   const currentPage = data?.page ?? page;
   const pageSize = data?.pageSize ?? PAGE_SIZE;
@@ -208,6 +329,7 @@ export function TransactionTable() {
   const endIndex = Math.min(currentPage * pageSize, total);
   const hasPreviousPage = currentPage > 1;
   const hasNextPage = currentPage * pageSize < total;
+  const categoryList = categories ?? [];
 
   return (
     <div className="space-y-4">
@@ -220,27 +342,94 @@ export function TransactionTable() {
           onChange={(event) => setSearch(event.target.value)}
         />
         {hasClearableFilters ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             aria-label="Clear search and filters"
-            className="absolute top-1/2 right-2 -translate-y-1/2 text-negative transition-colors hover:text-negative/80"
+            className="absolute top-1/2 right-1 -translate-y-1/2 text-negative hover:bg-muted/50 hover:text-negative/80"
             onClick={clearFilters}
           >
             <X className="size-4" />
-          </button>
+          </Button>
         ) : null}
       </div>
 
+      {selectedIds.size > 0 ? (
+        <div className="hidden flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2.5 md:flex">
+          <span className="text-sm font-medium">
+            {selectedIds.size} selected
+          </span>
+          <Select
+            value={bulkCategoryId}
+            onValueChange={(value) => setBulkCategoryId(value ?? "")}
+          >
+            <SelectTrigger className="h-8 w-[200px]">
+              {bulkCategoryId ? (
+                (() => {
+                  const category = getCategoryById(categories, bulkCategoryId);
+                  return category ? (
+                    <CategoryLabel category={category} />
+                  ) : (
+                    <SelectValue placeholder="Choose category" />
+                  );
+                })()
+              ) : (
+                <SelectValue placeholder="Choose category" />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              <CategorySelectItems categories={categoryList} />
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            size="sm"
+            disabled={!bulkCategoryId || categoryMutation.isPending}
+            onClick={applyBulkCategory}
+          >
+            {categoryMutation.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              "Apply category"
+            )}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={categoryMutation.isPending}
+            onClick={() => {
+              setSelectedIds(new Set());
+              setBulkCategoryId("");
+            }}
+          >
+            Clear selection
+          </Button>
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-xl border border-border">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="hidden w-10 px-2 md:table-cell">
+                <Checkbox
+                  aria-label="Select all transactions on this page"
+                  checked={allPageSelected}
+                  indeterminate={somePageSelected}
+                  disabled={!pageTransactionIds.length || isLoading}
+                  onChange={(event) => toggleSelectAllOnPage(event.target.checked)}
+                />
+              </TableHead>
+
               <ColumnHeader
                 label="Date"
                 columnId="date"
                 openColumn={openColumn}
                 onOpenColumn={setOpenColumn}
                 isActive={isDateFilterActive}
+                className="w-[100px]"
               >
                 <div className="space-y-3">
                   <SortControls
@@ -249,7 +438,7 @@ export function TransactionTable() {
                     sortOrder={sortOrder}
                     onSortChange={handleSortChange}
                   />
-                  <div className="border-t border-border pt-3 space-y-2">
+                  <div className="space-y-2 border-t border-border pt-3">
                     <p className="text-xs font-medium text-muted-foreground">Date range</p>
                     <Input
                       type="date"
@@ -273,6 +462,7 @@ export function TransactionTable() {
                 openColumn={openColumn}
                 onOpenColumn={setOpenColumn}
                 isActive={isDescriptionSortActive}
+                className="w-[40%]"
               >
                 <SortControls
                   column="name"
@@ -288,6 +478,7 @@ export function TransactionTable() {
                 openColumn={openColumn}
                 onOpenColumn={setOpenColumn}
                 isActive={isCategoryFilterActive}
+                className="w-[180px]"
               >
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Category</p>
@@ -296,15 +487,22 @@ export function TransactionTable() {
                     onValueChange={(value) => setCategoryId(value ?? "all")}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="All categories" />
+                      {categoryId === "all" ? (
+                        <SelectValue placeholder="All categories" />
+                      ) : (
+                        (() => {
+                          const category = getCategoryById(categories, categoryId);
+                          return category ? (
+                            <CategoryLabel category={category} />
+                          ) : (
+                            <SelectValue placeholder="All categories" />
+                          );
+                        })()
+                      )}
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All categories</SelectItem>
-                      {(categories ?? []).map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.icon} {category.label}
-                        </SelectItem>
-                      ))}
+                      <CategorySelectItems categories={categoryList} />
                     </SelectContent>
                   </Select>
                 </div>
@@ -316,6 +514,7 @@ export function TransactionTable() {
                 openColumn={openColumn}
                 onOpenColumn={setOpenColumn}
                 isActive={isAccountFilterActive}
+                className="w-[140px]"
               >
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Account</p>
@@ -346,7 +545,7 @@ export function TransactionTable() {
                 onOpenColumn={setOpenColumn}
                 isActive={isAmountSortActive}
                 align="end"
-                className="text-right"
+                className="w-[100px] text-right"
               >
                 <SortControls
                   column="amount_usd"
@@ -361,35 +560,55 @@ export function TransactionTable() {
             {isLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i} className="border-border">
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="size-4 rounded" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-full max-w-[240px]" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-[170px] rounded-md" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-16" /></TableCell>
                 </TableRow>
               ))
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-negative">
+                <TableCell colSpan={6} className="py-10 text-center text-negative">
                   Failed to load transactions.
                 </TableCell>
               </TableRow>
             ) : !data?.transactions.length ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   No transactions found. Connect a bank and sync to see data.
                 </TableCell>
               </TableRow>
             ) : (
               data.transactions.map((transaction) => {
                 const isExpense = transaction.amount_usd > 0;
+                const accountLabel = `${transaction.account_name}${
+                  transaction.account_mask ? ` ·•••${transaction.account_mask}` : ""
+                }`;
+                const isSelected = selectedIds.has(transaction.id);
 
                 return (
-                  <TableRow key={transaction.id} className="border-border">
-                    <TableCell>{formatDate(transaction.date)}</TableCell>
-                    <TableCell>
+                  <TableRow
+                    key={transaction.id}
+                    className={cn("border-border", isSelected && "bg-muted/40")}
+                    data-state={isSelected ? "selected" : undefined}
+                  >
+                    <TableCell className="hidden w-10 px-2 md:table-cell">
+                      <Checkbox
+                        aria-label={`Select ${transaction.name}`}
+                        checked={isSelected}
+                        onChange={(event) =>
+                          toggleRowSelection(transaction.id, event.target.checked)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="w-[100px]">{formatDate(transaction.date)}</TableCell>
+                    <TableCell className="max-w-0 whitespace-normal">
                       <div className="space-y-1">
-                        <p>{transaction.name}</p>
+                        <p className="truncate" title={transaction.name}>
+                          {transaction.name}
+                        </p>
                         {transaction.is_recurring ? (
                           <Badge variant="secondary" className="text-[10px]">
                             Recurring
@@ -397,7 +616,7 @@ export function TransactionTable() {
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="w-[180px]">
                       <Select
                         value={transaction.category_id}
                         onValueChange={(value) => {
@@ -406,30 +625,30 @@ export function TransactionTable() {
                           }
 
                           categoryMutation.mutate({
-                            id: transaction.id,
+                            ids: [transaction.id],
                             category_id: value,
                           });
                         }}
                       >
-                        <SelectTrigger className="h-8 w-[170px]">
-                          <SelectValue />
-                        </SelectTrigger>
+                        <CategorySelectTrigger
+                          categoryId={transaction.category_id}
+                          categories={categories}
+                          className="h-8 w-full max-w-[170px]"
+                        />
                         <SelectContent>
-                          {(categories ?? []).map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.icon} {item.label}
-                            </SelectItem>
-                          ))}
+                          <CategorySelectItems categories={categoryList} />
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {transaction.account_name}
-                      {transaction.account_mask ? ` ·•••${transaction.account_mask}` : ""}
+                    <TableCell
+                      className="max-w-[140px] truncate text-muted-foreground"
+                      title={accountLabel}
+                    >
+                      {accountLabel}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "text-right font-medium",
+                        "w-[100px] text-right font-medium",
                         isExpense ? "text-negative" : "text-positive"
                       )}
                     >

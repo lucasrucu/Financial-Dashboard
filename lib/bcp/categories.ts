@@ -1,15 +1,14 @@
 import type { CategoryId } from "@/constants/categories";
 
+// High-confidence merchant/salary patterns only. Everything else stays "other"
+// until the user recategorizes manually or via AI.
 const BCP_CATEGORY_RULES: Array<{ pattern: RegExp; categoryId: CategoryId }> = [
   { pattern: /sueldo|nomina|nómina|payroll|salary|haberes/i, categoryId: "salary" },
-  { pattern: /spotify|netflix|disney|prime/i, categoryId: "subscriptions" },
-  { pattern: /uber|pyu\*uber|dlc\*rides|viajes/i, categoryId: "transport" },
-  { pattern: /pedidosya|trattori|petrosur|brisa|market|restaurant/i, categoryId: "food" },
-  { pattern: /movie time|yc-pyu/i, categoryId: "entertainment" },
-  { pattern: /smart fit|gym|fitness/i, categoryId: "health" },
-  { pattern: /plin|yape|pago yape|abon plin/i, categoryId: "savings" },
-  { pattern: /kambista|venta usd/i, categoryId: "savings" },
-  { pattern: /impuesto|itf|mant\. cuenta/i, categoryId: "other" },
+  { pattern: /spotify|netflix|disney|prime video/i, categoryId: "subscriptions" },
+  { pattern: /pyu\*uber|dlc\*uber|dlc\*rides/i, categoryId: "transport" },
+  { pattern: /pedidosya/i, categoryId: "food" },
+  { pattern: /movie time/i, categoryId: "entertainment" },
+  { pattern: /smart fit/i, categoryId: "health" },
 ];
 
 export function mapBcpCategory(description: string): CategoryId {

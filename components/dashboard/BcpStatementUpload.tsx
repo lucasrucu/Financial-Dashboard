@@ -88,6 +88,40 @@ function getCategoryLabel(categoryId: string, categories: ReturnType<typeof useC
   return getCategoryById(categories, categoryId)?.label ?? categoryId;
 }
 
+function canImportPreview(preview: BcpImportPreview): boolean {
+  return Boolean(
+    preview.fileHash &&
+      preview.accountCode &&
+      preview.period.start &&
+      preview.period.end &&
+      preview.transactions.length > 0
+  );
+}
+
+function isUsdStatement(preview: BcpImportPreview): boolean {
+  return preview.currency.toUpperCase() === "USD";
+}
+
+function formatStatementBalance(amount: number, preview: BcpImportPreview): string {
+  return isUsdStatement(preview) ? formatUsd(amount) : formatPen(amount);
+}
+
+function getImportBlockReason(preview: BcpImportPreview): string | null {
+  if (!preview.accountCode) {
+    return "Import blocked: account code could not be detected from the statement.";
+  }
+
+  if (!preview.period.start || !preview.period.end) {
+    return "Import blocked: statement period could not be detected from the header.";
+  }
+
+  if (preview.transactions.length === 0) {
+    return "Import blocked: no transactions were parsed from this statement.";
+  }
+
+  return null;
+}
+
 export function BcpStatementUpload() {
   const queryClient = useQueryClient();
   const { data: categories } = useCategories();
@@ -145,7 +179,7 @@ export function BcpStatementUpload() {
 
   const handleImport = useCallback(
     (force = false) => {
-      if (!preview) {
+      if (!preview || !canImportPreview(preview)) {
         return;
       }
 
@@ -170,12 +204,16 @@ export function BcpStatementUpload() {
     [importMutation, preview]
   );
 
+  const canImport = preview ? canImportPreview(preview) : false;
+  const importBlockReason = preview ? getImportBlockReason(preview) : null;
+
   return (
     <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle>Import BCP Statement</CardTitle>
         <CardDescription>
-          Upload your BCP Estado de Cuenta PDF to preview and import transactions in soles.
+          Upload your BCP Estado de Cuenta PDF to preview and import transactions from soles or
+          USD accounts.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -220,15 +258,20 @@ export function BcpStatementUpload() {
           <div className="space-y-4 rounded-lg border border-border p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
-                <p className="font-medium">Preview: {preview.accountCode}</p>
+                <p className="font-medium">
+                  Preview: {preview.accountCode || "Account code not detected"}
+                  {preview.accountCode
+                    ? ` · ${isUsdStatement(preview) ? "USD" : "Soles"}`
+                    : ""}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {formatDate(preview.period.start)} to {formatDate(preview.period.end)} ·{" "}
                   {preview.transactions.length} transactions
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Opening {formatPen(preview.openingBalancePen)}
+                  Opening {formatStatementBalance(preview.openingBalancePen, preview)}
                   {preview.closingBalancePen !== null
-                    ? ` · Closing ${formatPen(preview.closingBalancePen)}`
+                    ? ` · Closing ${formatStatementBalance(preview.closingBalancePen, preview)}`
                     : ""}
                 </p>
               </div>
@@ -236,7 +279,7 @@ export function BcpStatementUpload() {
                 <Button
                   type="button"
                   onClick={() => handleImport(false)}
-                  disabled={importMutation.isPending || duplicate}
+                  disabled={importMutation.isPending || duplicate || !canImport}
                 >
                   {importMutation.isPending ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -250,13 +293,19 @@ export function BcpStatementUpload() {
                     type="button"
                     variant="outline"
                     onClick={() => handleImport(true)}
-                    disabled={importMutation.isPending}
+                    disabled={importMutation.isPending || !canImport}
                   >
                     Re-import Anyway
                   </Button>
                 ) : null}
               </div>
             </div>
+
+            {importBlockReason ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {importBlockReason}
+              </div>
+            ) : null}
 
             {preview.warnings.length ? (
               <div className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-100">
@@ -274,8 +323,14 @@ export function BcpStatementUpload() {
                     <TableHead>Description</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead className="text-right">PEN</TableHead>
-                    <TableHead className="text-right">USD</TableHead>
+                    {isUsdStatement(preview) ? (
+                      <TableHead className="text-right">USD</TableHead>
+                    ) : (
+                      <>
+                        <TableHead className="text-right">PEN</TableHead>
+                        <TableHead className="text-right">USD</TableHead>
+                      </>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -291,10 +346,20 @@ export function BcpStatementUpload() {
                         </Badge>
                       </TableCell>
                       <TableCell>{getCategoryLabel(transaction.categoryId, categories)}</TableCell>
-                      <TableCell className="text-right">{formatPen(transaction.amountPen)}</TableCell>
-                      <TableCell className="text-right">
-                        {formatUsd(transaction.amountUsd)}
-                      </TableCell>
+                      {isUsdStatement(preview) ? (
+                        <TableCell className="text-right">
+                          {formatUsd(transaction.amountUsd)}
+                        </TableCell>
+                      ) : (
+                        <>
+                          <TableCell className="text-right">
+                            {formatPen(transaction.amountPen)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatUsd(transaction.amountUsd)}
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
