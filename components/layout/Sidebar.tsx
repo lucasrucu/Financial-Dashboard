@@ -9,6 +9,7 @@ import {
   Receipt,
   Sparkles,
   Menu,
+  Target,
   Upload,
   X,
 } from "lucide-react";
@@ -19,12 +20,14 @@ import { cn } from "@/lib/utils";
 import { ThemePicker } from "@/components/layout/ThemePicker";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { fetchOverviewStats } from "@/lib/overview";
 
 const navItems = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/import", label: "Import", icon: Upload },
   { href: "/categories", label: "Categories", icon: FolderOpen },
+  { href: "/goals", label: "Goals", icon: Target },
   { href: "/insights", label: "Insights", icon: Sparkles },
 ] as const;
 
@@ -59,8 +62,8 @@ function prefetchRoute(queryClient: ReturnType<typeof useQueryClient>, href: str
   switch (href) {
     case "/":
       void queryClient.prefetchQuery({
-        queryKey: ["overview"],
-        queryFn: () => fetch("/api/overview").then((r) => r.json()),
+        queryKey: ["overview", 0],
+        queryFn: () => fetchOverviewStats(0),
       });
       break;
     case "/categories":
@@ -80,6 +83,20 @@ function prefetchRoute(queryClient: ReturnType<typeof useQueryClient>, href: str
           fetch("/api/categories")
             .then((r) => r.json())
             .then((d: { categories: unknown[] }) => d.categories),
+      });
+      break;
+    case "/goals":
+      void queryClient.prefetchQuery({
+        queryKey: ["goals"],
+        queryFn: () =>
+          fetch("/api/goals")
+            .then((r) => {
+              if (!r.ok) {
+                throw new Error("Failed to fetch goals");
+              }
+              return r.json();
+            })
+            .then((d: { goals: unknown[] }) => d.goals),
       });
       break;
   }

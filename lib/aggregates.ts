@@ -65,9 +65,12 @@ export async function getNetWorth(supabase: SupabaseClient) {
   return Array.from(effectiveBalances.values()).reduce((sum, balance) => sum + balance, 0);
 }
 
-export async function getMonthlySpendingComparison(supabase: SupabaseClient) {
-  const currentRange = getMonthRange(0);
-  const previousRange = getMonthRange(-1);
+export async function getMonthlySpendingComparison(
+  supabase: SupabaseClient,
+  monthOffset = 0
+) {
+  const currentRange = getMonthRange(monthOffset);
+  const previousRange = getMonthRange(monthOffset - 1);
 
   const [currentTransactions, previousTransactions] = await Promise.all([
     fetchTransactionsInRange(supabase, currentRange.start, currentRange.end),
@@ -88,8 +91,12 @@ export async function getMonthlySpendingComparison(supabase: SupabaseClient) {
   };
 }
 
-async function buildCategoryTotals(supabase: SupabaseClient, userId: string) {
-  const range = getMonthRange(0);
+async function buildCategoryTotals(
+  supabase: SupabaseClient,
+  userId: string,
+  monthOffset = 0
+) {
+  const range = getMonthRange(monthOffset);
   const [transactions, categories] = await Promise.all([
     fetchTransactionsInRange(supabase, range.start, range.end),
     ensureDefaultCategories(supabase, userId),
@@ -145,13 +152,18 @@ async function buildIncomeCategoryTotals(supabase: SupabaseClient, userId: strin
 export async function getTopCategories(
   supabase: SupabaseClient,
   userId: string,
-  limit = 3
+  limit = 3,
+  monthOffset = 0
 ) {
-  return (await buildCategoryTotals(supabase, userId)).slice(0, limit);
+  return (await buildCategoryTotals(supabase, userId, monthOffset)).slice(0, limit);
 }
 
-export async function getCategoryBreakdown(supabase: SupabaseClient, userId: string) {
-  return (await buildCategoryTotals(supabase, userId)).map(
+export async function getCategoryBreakdown(
+  supabase: SupabaseClient,
+  userId: string,
+  monthOffset = 0
+) {
+  return (await buildCategoryTotals(supabase, userId, monthOffset)).map(
     ({ categoryId, label, color, amount }) => ({ categoryId, name: label, color, amount })
   );
 }
@@ -168,9 +180,10 @@ export async function getIncomeCategoryBreakdown(
 export async function getCategoryData(
   supabase: SupabaseClient,
   userId: string,
-  topLimit = 3
+  topLimit = 3,
+  monthOffset = 0
 ) {
-  const sorted = await buildCategoryTotals(supabase, userId);
+  const sorted = await buildCategoryTotals(supabase, userId, monthOffset);
   return {
     topCategories: sorted.slice(0, topLimit),
     categoryBreakdown: sorted.map(({ categoryId, label, color, amount }) => ({

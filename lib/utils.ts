@@ -85,6 +85,17 @@ export function formatDate(date: string) {
   }).format(new Date(`${date}T00:00:00`));
 }
 
+export function formatDateShort(date: string) {
+  const d = new Date(`${date}T00:00:00`);
+  const now = new Date();
+  const opts: Intl.DateTimeFormatOptions =
+    d.getFullYear() === now.getFullYear()
+      ? { month: "short", day: "numeric" }
+      : { month: "short", day: "numeric", year: "2-digit" };
+
+  return new Intl.DateTimeFormat("en-US", opts).format(d);
+}
+
 export function formatRelativeTime(dateString: string | null) {
   if (!dateString) {
     return "Never";
