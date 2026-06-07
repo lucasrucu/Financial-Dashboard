@@ -110,7 +110,16 @@ supabase/
 
 ## Git Workflow
 
-Follow Git Flow-style branching. Cursor equivalent: `.cursor/rules/git-workflow.mdc`.
+PR-based simplified Git Flow. Full rules: `.cursor/rules/git-workflow.mdc`.
+
+### Golden rules
+
+1. All work stays on the feature/fix/chore/hotfix branch until the user confirms merge.
+2. Never commit directly to `master`.
+3. Never merge into `master` locally — always through a GitHub PR with **Create a merge commit**.
+4. Never squash, rebase-merge, or fast-forward feature branches into `master`.
+5. Never rebase or amend commits already on `master`.
+6. Delete merged branches with `git branch -d` only — never `-D` on completed work.
 
 ### Branch naming
 
@@ -119,46 +128,40 @@ Follow Git Flow-style branching. Cursor equivalent: `.cursor/rules/git-workflow.
 | `feature/` | New functionality (default) |
 | `fix/` | Bug fixes |
 | `chore/` | Tooling, deps, config |
+| `hotfix/` | Urgent production fixes |
 
 ### Auto-create branches
 
-When starting new feature work, bug fixes, or chore tasks:
-
-1. Check the current branch (`git branch --show-current`).
-2. If on `master`, automatically create and switch to a prefixed branch before writing code.
-3. Never commit directly to `master`.
+1. `git fetch origin && git checkout master && git pull origin master`
+2. `git checkout -b <prefix>/<short-kebab-description>`
+3. `git push -u origin HEAD`
 
 ### Auto-create commits
 
 Create commits automatically as work completes — do not wait for the user to ask.
 
-- One logical change per commit; stage only relevant files.
-- Use Conventional Commits: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`.
-- Professional messages: imperative mood, concise subject, body explaining *why* when non-obvious.
-- Never commit `.env.local` or secrets.
-- **No AI attribution** — commits must look human-authored only. Never add `Co-authored-by`, `Signed-off-by`, or any trailer referencing Cursor, Claude, Copilot, or other AI tools. Cursor may inject a `Co-authored-by` trailer via its commit hook — always amend it out before pushing. Use `--no-verify` only for that cleanup amend, not to bypass other checks.
+- One logical change per commit; Conventional Commits; no secrets; no AI attribution.
+- Amend out `Co-authored-by` trailers on the branch before opening the PR.
 
 ### Merge gate (user confirmation required)
 
-- **Never** merge into `master`, push to `master`, or open a merge PR unless the user explicitly requests it.
+- **Never** open a PR, merge a PR, or push to `master` unless the user explicitly requests it.
 - **Never** force-push to `master`.
-- **Never** skip hooks unless the user explicitly asks.
 
-### Post-merge flow (run when user confirms merge)
+### PR merge flow (when user confirms)
 
-After a successful merge into `master`, complete the full sync — do not stop at the local merge:
+1. Verify branch clean; `git push -u origin HEAD`
+2. `gh pr create --base master --head <branch>` (summary + test plan)
+3. Wait for user to say merge
+4. `gh pr merge <number> --merge --delete-branch`
+5. `git checkout master && git pull origin master && git branch -d <branch>`
+6. Verify with `git log --oneline --graph -10`
 
-1. **Fetch** — `git fetch origin`
-2. **Check incoming changes** — if `origin/master` is ahead of local `master`, merge `origin/master` into `master` and resolve conflicts before continuing.
-3. **Clean up branches** — delete local branches fully merged into `master` (e.g. `git branch -d feature/...`). Delete the remote branch too if it exists and was merged (`git push origin --delete feature/...`).
-4. **Sync to remote** — `git push origin master`
-5. **Verify** — `git status` should show `master...origin/master` with no ahead/behind drift.
+GitHub branch protection on `master`: require PRs, allow merge commits only.
 
-Only stop early if a merge conflict or push rejection needs user input.
+When a feature is complete:
 
-When a feature is complete, remind the user:
-
-> Work is on `feature/...`. Say when you want me to merge into `master`.
+> Work is on `feature/...`. Review the PR and say when you want me to merge into `master`.
 
 ---
 

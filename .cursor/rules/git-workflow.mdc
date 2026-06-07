@@ -5,30 +5,41 @@ alwaysApply: true
 
 # Git Workflow
 
-Follow Git Flow-style branching. See also `.claude/CLAUDE.md` for the Claude Code equivalent.
+PR-based simplified Git Flow. See also `.claude/CLAUDE.md`.
 
-## Branch naming
+## Branch model
 
-| Prefix | Use |
-|--------|-----|
+| Branch | Role |
+|--------|------|
+| `master` | Production-ready. Protected. Never commit here directly. |
 | `feature/` | New functionality (default) |
 | `fix/` | Bug fixes |
 | `chore/` | Tooling, deps, config |
+| `hotfix/` | Urgent production fixes (same PR flow as `fix/`) |
 
 Examples: `feature/income-tracking`, `fix/overview-crash`, `chore/update-deps`
+
+## Golden rules (never violate)
+
+1. **All work stays on the feature/fix/chore/hotfix branch** until the user confirms merge. Never switch to `master` to commit, fix, or "finish" work.
+2. **Never commit directly to `master`.**
+3. **Never merge into `master` locally.** Integration is always through a GitHub pull request merged with **Create a merge commit**.
+4. **Never fast-forward, squash, or rebase-merge** feature branches into `master`.
+5. **Never `git branch -D`** on completed work. Use `-d` only after the PR merge. `-D` is for abandoned branches only.
+6. **Never rebase or amend commits that are already on `master`.** Amend only on the open branch, before the PR is merged.
 
 ## Auto-create branches
 
 When starting **new feature work**, **bug fixes**, or **chore tasks**:
 
-1. Check the current branch (`git branch --show-current`).
-2. If on `master` (default branch), automatically create and switch to an appropriately prefixed branch before writing code:
-   - New functionality → `feature/<short-kebab-description>`
-   - Bug fix → `fix/<short-kebab-description>`
-   - Tooling/config → `chore/<short-kebab-description>`
-3. Never commit directly to `master`.
+1. `git fetch origin`
+2. Check the current branch (`git branch --show-current`).
+3. If on `master`, create and switch to a prefixed branch from up-to-date `master`:
+   - `git checkout master && git pull origin master`
+   - `git checkout -b feature/<short-kebab-description>` (or `fix/`, `chore/`, `hotfix/`)
+4. Push the branch early: `git push -u origin HEAD`
 
-## Auto-create commits
+## Commits
 
 Create commits automatically as work completes — do not wait for the user to ask.
 
@@ -39,41 +50,109 @@ Create commits automatically as work completes — do not wait for the user to a
 - Write professional messages: imperative mood, concise subject (≤ 72 chars), optional body explaining *why* when non-obvious.
 - Stage only files relevant to that change — never bundle unrelated work.
 - Never commit `.env.local`, credentials, or secrets.
-- **No AI attribution** — commits must look human-authored only. Never add `Co-authored-by`, `Signed-off-by`, or any trailer referencing Cursor, Claude, Copilot, or other AI tools. Cursor may inject a `Co-authored-by` trailer via its commit hook — always amend it out before pushing. Use `--no-verify` only for that cleanup amend, not to bypass other checks.
-
-**Examples:**
-
-```
-feat: add income pie chart and salary categories
-
-Income transactions were invisible on the dashboard. Adds income
-breakdown aggregation, dedicated categories, and a second pie chart.
-```
-
-```
-fix: guard optional chaining on overview topCategories
-```
+- **No AI attribution** — commits must look human-authored only. Never add `Co-authored-by`, `Signed-off-by`, or any trailer referencing Cursor, Claude, Copilot, or other AI tools. Cursor may inject a `Co-authored-by` trailer via its commit hook — always amend it out **on the branch, before opening the PR**. Use `--no-verify` only for that cleanup amend, not to bypass other checks.
 
 ## Merge gate (user confirmation required)
 
-- **Never** merge into `master`, push to `master`, or open a merge PR unless the user explicitly requests it.
+- **Never** open a PR, merge a PR, or push to `master` unless the user explicitly requests it.
 - **Never** force-push to `master`.
 - **Never** skip hooks (`--no-verify`) unless the user explicitly asks.
 
-## Post-merge flow (run when user confirms merge)
+When the user confirms a feature is done, run the **full PR merge flow** below — do not shortcut.
 
-After a successful merge into `master`, complete the full sync — do not stop at the local merge:
+## PR merge flow (run when user confirms merge)
 
-1. **Fetch** — `git fetch origin`
-2. **Check incoming changes** — if `origin/master` is ahead of local `master`, merge `origin/master` into `master` and resolve conflicts before continuing.
-3. **Clean up branches** — delete local branches fully merged into `master` (e.g. `git branch -d feature/...`). Delete the remote branch too if it exists and was merged (`git push origin --delete feature/...`).
-4. **Sync to remote** — `git push origin master`
-5. **Verify** — `git status` should show `master...origin/master` with no ahead/behind drift.
+Execute every step in order. Do not skip steps.
 
-Only stop early if a merge conflict or push rejection needs user input.
+### 1. Verify branch is ready
+
+```bash
+git branch --show-current          # must be the feature/fix/chore branch
+git status                         # working tree clean
+git log origin/master..HEAD --oneline
+```
+
+If not on the branch, `git checkout <branch>`. If uncommitted changes exist, commit them on the branch first.
+
+### 2. Push the branch
+
+```bash
+git push -u origin HEAD
+```
+
+### 3. Open a pull request into `master`
+
+```bash
+gh pr create --base master --head <branch> \
+  --title "<conventional commit subject>" \
+  --body "$(cat <<'EOF'
+## Summary
+<1-3 bullets describing what changed and why>
+
+## Test plan
+- [ ] <how to verify>
+EOF
+)"
+```
+
+If `gh` is unavailable, push the branch and give the user the GitHub compare URL:
+`https://github.com/lucasrucu/Financial-Dashboard/compare/master...<branch>?expand=1`
+
+### 4. Wait for user review
+
+Present the PR URL. Do **not** merge until the user explicitly says to merge.
+
+### 5. Merge the PR with a merge commit
+
+```bash
+gh pr merge <number> --merge --delete-branch
+```
+
+**Required:** `--merge` (Create a merge commit). Never use `--squash` or `--rebase`.
+
+If merging via GitHub UI, choose **Create a merge commit** and check **Delete branch**.
+
+### 6. Sync local `master` and clean up
+
+```bash
+git fetch origin
+git checkout master
+git pull origin master
+git branch -d <branch>               # safe delete; must succeed after PR merge
+```
+
+If `-d` refuses, diagnose with `git log master..<branch>` — do **not** use `-D`.
+
+### 7. Verify
+
+```bash
+git status -sb                     # master...origin/master, no ahead/behind
+git log --oneline --graph -10      # merge commit + branch fork visible
+```
+
+Only stop early if a merge conflict, failed checks, or push rejection needs user input.
+
+## GitHub repo settings (one-time, manual)
+
+Configure in GitHub → Settings → Branches → Branch protection for `master`:
+
+- Require a pull request before merging
+- Require branches to be up to date before merging
+- Allow **merge commits** only; disable squash and rebase as merge methods
 
 ## Merge reminder
 
-When a feature is complete, or at the end of a session with unmerged work on a feature branch, remind the user:
+When a feature is complete, or at the end of a session with unmerged work on a feature branch:
 
-> Work is on `feature/...`. Say when you want me to merge into `master`.
+> Work is on `feature/...`. Review the PR and say when you want me to merge into `master`.
+
+## Anti-patterns
+
+| Bad behavior | Why it breaks the graph |
+|---|---|
+| `git checkout master` then commit new work | Bypasses the branch; branch never merges |
+| Local `git merge feature/x` into `master` | Skips PR; often fast-forwards with no merge commit |
+| `git merge` without PR | No review trail; graph may not show on GitHub |
+| Squash or rebase merge | Collapses or rewrites branch history |
+| Rebase/amend after PR merge | Rewrites SHAs; branches look unmerged |
+| `git branch -D` when `-d` fails | Force-deletes branch evidence |
