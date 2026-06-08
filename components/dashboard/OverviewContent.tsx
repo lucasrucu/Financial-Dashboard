@@ -31,6 +31,14 @@ const IncomeChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-72 w-full rounded-lg" /> }
 );
 
+const IncomeVsSpendingChart = dynamic(
+  () =>
+    import("@/components/dashboard/IncomeVsSpendingChart").then(
+      (m) => m.IncomeVsSpendingChart
+    ),
+  { ssr: false, loading: () => <Skeleton className="h-72 w-full rounded-lg" /> }
+);
+
 const EMPTY_OVERVIEW: OverviewStats = {
   netWorth: 0,
   spendingComparison: {
@@ -42,6 +50,7 @@ const EMPTY_OVERVIEW: OverviewStats = {
   topCategories: [],
   categoryBreakdown: [],
   incomeBreakdown: [],
+  monthlySummary: { income: 0, spending: 0, net: 0 },
 };
 
 export function OverviewContent() {
@@ -180,6 +189,12 @@ export function OverviewContent() {
           )}
         </CardContent>
       </Card>
+
+      <IncomeVsSpendingChart
+        income={overview.monthlySummary.income}
+        spending={overview.monthlySummary.spending}
+        monthLabel={monthLabel}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SpendingChart data={overview.categoryBreakdown} />

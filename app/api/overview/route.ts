@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import {
   getCategoryData,
   getIncomeCategoryBreakdown,
+  getMonthlyIncome,
   getMonthlySpendingComparison,
   getNetWorth,
 } from "@/lib/aggregates";
@@ -22,13 +23,21 @@ export async function GET(request: Request) {
 
     const { supabase, user } = auth;
 
-    const [netWorth, spendingComparison, { topCategories, categoryBreakdown }, incomeBreakdown] =
-      await Promise.all([
-        getNetWorth(supabase),
-        getMonthlySpendingComparison(supabase, monthOffset),
-        getCategoryData(supabase, user.id, 3, monthOffset),
-        getIncomeCategoryBreakdown(supabase, user.id),
-      ]);
+    const [
+      netWorth,
+      spendingComparison,
+      { topCategories, categoryBreakdown },
+      incomeBreakdown,
+      monthlyIncome,
+    ] = await Promise.all([
+      getNetWorth(supabase),
+      getMonthlySpendingComparison(supabase, monthOffset),
+      getCategoryData(supabase, user.id, 3, monthOffset),
+      getIncomeCategoryBreakdown(supabase, user.id, monthOffset),
+      getMonthlyIncome(supabase, monthOffset),
+    ]);
+
+    const monthlySpending = spendingComparison.currentSpending;
 
     return NextResponse.json({
       netWorth,
@@ -36,6 +45,11 @@ export async function GET(request: Request) {
       topCategories,
       categoryBreakdown,
       incomeBreakdown,
+      monthlySummary: {
+        income: monthlyIncome,
+        spending: monthlySpending,
+        net: monthlyIncome - monthlySpending,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch overview stats";
