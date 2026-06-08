@@ -41,7 +41,7 @@ import {
   updateTransactionCategory,
   useTransactions,
 } from "@/hooks/useTransactions";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatDateShort } from "@/lib/utils";
 import type { Category } from "@/types/category";
 import type { TransactionListResponse } from "@/types/transaction";
 import type { TransactionSortBy, TransactionSortOrder } from "@/types/transaction";
@@ -604,7 +604,10 @@ export function TransactionTable() {
                         }
                       />
                     </TableCell>
-                    <TableCell className="w-[100px]">{formatDate(transaction.date)}</TableCell>
+                    <TableCell className="w-[100px]">
+                      <span className="md:hidden">{formatDateShort(transaction.date)}</span>
+                      <span className="hidden md:inline">{formatDate(transaction.date)}</span>
+                    </TableCell>
                     <TableCell className="max-w-0 whitespace-normal">
                       <div className="space-y-1">
                         <div className="flex items-start gap-1.5">
