@@ -122,8 +122,12 @@ async function buildCategoryTotals(
     .sort((a, b) => b.amount - a.amount);
 }
 
-async function buildIncomeCategoryTotals(supabase: SupabaseClient, userId: string) {
-  const range = getMonthRange(0);
+async function buildIncomeCategoryTotals(
+  supabase: SupabaseClient,
+  userId: string,
+  monthOffset = 0
+) {
+  const range = getMonthRange(monthOffset);
   const [transactions, categories] = await Promise.all([
     fetchTransactionsInRange(supabase, range.start, range.end),
     ensureDefaultCategories(supabase, userId),
@@ -170,11 +174,18 @@ export async function getCategoryBreakdown(
 
 export async function getIncomeCategoryBreakdown(
   supabase: SupabaseClient,
-  userId: string
+  userId: string,
+  monthOffset = 0
 ) {
-  return (await buildIncomeCategoryTotals(supabase, userId)).map(
+  return (await buildIncomeCategoryTotals(supabase, userId, monthOffset)).map(
     ({ categoryId, label, color, amount }) => ({ categoryId, name: label, color, amount })
   );
+}
+
+export async function getMonthlyIncome(supabase: SupabaseClient, monthOffset = 0) {
+  const range = getMonthRange(monthOffset);
+  const transactions = await fetchTransactionsInRange(supabase, range.start, range.end);
+  return sumIncome(transactions);
 }
 
 export async function getCategoryData(

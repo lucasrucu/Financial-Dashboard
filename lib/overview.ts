@@ -24,6 +24,11 @@ export interface OverviewStats {
     color: string;
     amount: number;
   }>;
+  monthlySummary: {
+    income: number;
+    spending: number;
+    net: number;
+  };
 }
 
 export function formatMonthLabel(monthOffset = 0) {

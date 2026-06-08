@@ -11,6 +11,7 @@ export function IncomeChart({ data }: { data: CategoryDatum[] }) {
       title="Income by Category"
       description="Current month breakdown"
       emptyMessage="No income recorded this month yet."
+      totalLabel="Total income"
       data={data}
     />
   );

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Strips AI/Cursor attribution trailers before a commit message is finalized.
+MSG_FILE=$1
+
+if [ ! -f "$MSG_FILE" ]; then
+  exit 0
+fi
+
+tmp="${MSG_FILE}.tmp"
+grep -viE '^(co-authored-by:.*cursor|made-with:.*cursor|made with cursor)' "$MSG_FILE" > "$tmp"
+mv "$tmp" "$MSG_FILE"
+
+exit 0
