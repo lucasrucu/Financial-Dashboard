@@ -41,7 +41,7 @@ import {
   updateTransactionCategory,
   useTransactions,
 } from "@/hooks/useTransactions";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatDateShort } from "@/lib/utils";
 import type { Category } from "@/types/category";
 import type { TransactionListResponse } from "@/types/transaction";
 import type { TransactionSortBy, TransactionSortOrder } from "@/types/transaction";
@@ -478,7 +478,7 @@ export function TransactionTable() {
                 openColumn={openColumn}
                 onOpenColumn={setOpenColumn}
                 isActive={isCategoryFilterActive}
-                className="w-[180px]"
+                className="hidden w-[180px] md:table-cell"
               >
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Category</p>
@@ -514,7 +514,7 @@ export function TransactionTable() {
                 openColumn={openColumn}
                 onOpenColumn={setOpenColumn}
                 isActive={isAccountFilterActive}
-                className="w-[140px]"
+                className="hidden w-[140px] md:table-cell"
               >
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Account</p>
@@ -563,8 +563,8 @@ export function TransactionTable() {
                   <TableCell className="hidden md:table-cell"><Skeleton className="size-4 rounded" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-full max-w-[240px]" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-[170px] rounded-md" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-8 w-[170px] rounded-md" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-16" /></TableCell>
                 </TableRow>
               ))
@@ -587,6 +587,7 @@ export function TransactionTable() {
                   transaction.account_mask ? ` ·•••${transaction.account_mask}` : ""
                 }`;
                 const isSelected = selectedIds.has(transaction.id);
+                const category = getCategoryById(categories, transaction.category_id);
 
                 return (
                   <TableRow
@@ -603,12 +604,25 @@ export function TransactionTable() {
                         }
                       />
                     </TableCell>
-                    <TableCell className="w-[100px]">{formatDate(transaction.date)}</TableCell>
+                    <TableCell className="w-[100px]">
+                      <span className="md:hidden">{formatDateShort(transaction.date)}</span>
+                      <span className="hidden md:inline">{formatDate(transaction.date)}</span>
+                    </TableCell>
                     <TableCell className="max-w-0 whitespace-normal">
                       <div className="space-y-1">
-                        <p className="truncate" title={transaction.name}>
-                          {transaction.name}
-                        </p>
+                        <div className="flex items-start gap-1.5">
+                          {category?.icon ? (
+                            <span
+                              className="mt-0.5 shrink-0 text-sm leading-none md:hidden"
+                              title={category.label}
+                            >
+                              {category.icon}
+                            </span>
+                          ) : null}
+                          <p className="line-clamp-2 md:line-clamp-1" title={transaction.name}>
+                            {transaction.name}
+                          </p>
+                        </div>
                         {transaction.is_recurring ? (
                           <Badge variant="secondary" className="text-[10px]">
                             Recurring
@@ -616,7 +630,7 @@ export function TransactionTable() {
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className="w-[180px]">
+                    <TableCell className="hidden w-[180px] md:table-cell">
                       <Select
                         value={transaction.category_id}
                         onValueChange={(value) => {
@@ -641,7 +655,7 @@ export function TransactionTable() {
                       </Select>
                     </TableCell>
                     <TableCell
-                      className="max-w-[140px] truncate text-muted-foreground"
+                      className="hidden max-w-[140px] truncate text-muted-foreground md:table-cell"
                       title={accountLabel}
                     >
                       {accountLabel}
