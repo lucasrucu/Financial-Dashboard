@@ -32,6 +32,7 @@ interface CategoryPieChartProps {
   description: string;
   emptyMessage: string;
   data: CategoryDatum[];
+  totalLabel?: string;
 }
 
 export function CategoryPieChart({
@@ -39,8 +40,10 @@ export function CategoryPieChart({
   description,
   emptyMessage,
   data,
+  totalLabel = "Total",
 }: CategoryPieChartProps) {
   const { formatAmount } = useCurrency();
+  const total = data.reduce((sum, entry) => sum + entry.amount, 0);
   const selectedThemeId = useThemeStore((state) => state.selectedThemeId);
   const tooltipFormatter = useCallback(
     (value: unknown) => formatAmount(Number(value ?? 0)),
@@ -73,7 +76,7 @@ export function CategoryPieChart({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-72">
+        <div className="relative h-72">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -95,6 +98,10 @@ export function CategoryPieChart({
               />
             </PieChart>
           </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            <p className="text-xs text-muted-foreground">{totalLabel}</p>
+            <p className="text-lg font-semibold">{formatAmount(total)}</p>
+          </div>
         </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {data.map((entry) => (

@@ -11,6 +11,7 @@ export function SpendingChart({ data }: { data: CategoryDatum[] }) {
       title="Spending by Category"
       description="Current month breakdown"
       emptyMessage="No spending data yet. Connect a bank and sync transactions."
+      totalLabel="Total spending"
       data={data}
     />
   );
