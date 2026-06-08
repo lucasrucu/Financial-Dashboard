@@ -50,7 +50,11 @@ Create commits automatically as work completes — do not wait for the user to a
 - Write professional messages: imperative mood, concise subject (≤ 72 chars), optional body explaining *why* when non-obvious.
 - Stage only files relevant to that change — never bundle unrelated work.
 - Never commit `.env.local`, credentials, or secrets.
-- **No AI attribution** — commits must look human-authored only. Never add `Co-authored-by`, `Signed-off-by`, or any trailer referencing Cursor, Claude, Copilot, or other AI tools. Cursor may inject a `Co-authored-by` trailer via its commit hook — always amend it out **on the branch, before opening the PR**. Use `--no-verify` only for that cleanup amend, not to bypass other checks.
+- **No AI attribution** — commits must look human-authored only. Never add `Co-authored-by`, `Made-with: Cursor`, `Made with Cursor`, `Signed-off-by`, or any trailer referencing Cursor, Claude, Copilot, or other AI tools.
+- **Agent commits must use a message file**, not `-m`, so Cursor cannot inject `--trailer "Co-authored-by: Cursor …"` into the shell command: write the subject to a temp file, then `git commit -F <msg-file>`.
+- **After every `git commit`**, verify the message is clean: `powershell -File scripts/git/verify-last-commit.ps1` (or `git cat-file -p HEAD`). If a trailer slipped through, amend with `git commit --amend -F <msg-file> --no-verify`.
+- **Before first commit on a machine**, run `powershell -File scripts/git/install-hooks.ps1` so `prepare-commit-msg` / `commit-msg` hooks strip or block attribution automatically.
+- Use `--no-verify` only for attribution cleanup amends, not to bypass other checks.
 
 ## Merge gate (user confirmation required)
 

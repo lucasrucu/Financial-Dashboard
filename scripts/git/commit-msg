@@ -1,0 +1,14 @@
+#!/bin/sh
+# Final pass: reject commit messages that still contain AI attribution.
+MSG_FILE=$1
+
+if [ ! -f "$MSG_FILE" ]; then
+  exit 0
+fi
+
+if grep -qiE '^(co-authored-by:.*cursor|made-with:.*cursor|made with cursor)' "$MSG_FILE"; then
+  echo "error: commit message contains AI/Cursor attribution; remove it before committing." >&2
+  exit 1
+fi
+
+exit 0
