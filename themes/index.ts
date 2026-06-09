@@ -5,7 +5,7 @@ import type { Theme } from "./types";
 
 export const builtInThemes: Theme[] = [defaultTheme, midnightTheme, sovereignTheme];
 
-export const defaultThemeId = defaultTheme.id;
+export const defaultThemeId = sovereignTheme.id;
 
 export function getBuiltInTheme(id: string): Theme | undefined {
   return builtInThemes.find((theme) => theme.id === id);
