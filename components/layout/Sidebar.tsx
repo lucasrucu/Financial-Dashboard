@@ -111,7 +111,7 @@ export function Sidebar() {
     <>
       <div className="border-b border-sidebar-border px-6 py-5">
         <p className="text-lg font-semibold tracking-tight text-foreground">
-          Finance
+          Qori
         </p>
         <p className="text-xs text-muted-foreground">Personal dashboard</p>
       </div>
