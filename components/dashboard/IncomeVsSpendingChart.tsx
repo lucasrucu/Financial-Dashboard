@@ -53,6 +53,7 @@ export function IncomeVsSpendingChart({
     border: `1px solid ${getThemeCssVar("border")}`,
     borderRadius: "0.5rem",
   };
+  const tooltipTextStyle = { color: getThemeCssVar("popover-foreground") };
 
   return (
     <Card className="border-border bg-card">
@@ -88,6 +89,8 @@ export function IncomeVsSpendingChart({
                     key={selectedThemeId}
                     formatter={tooltipFormatter}
                     contentStyle={tooltipStyle}
+                    labelStyle={tooltipTextStyle}
+                    itemStyle={tooltipTextStyle}
                     cursor={{ fill: getThemeCssVar("muted"), opacity: 0.3 }}
                   />
                   <Bar dataKey="amount" radius={[6, 6, 0, 0]} maxBarSize={80}>
