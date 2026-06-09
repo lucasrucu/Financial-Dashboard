@@ -110,9 +110,12 @@ export function Sidebar() {
   const navContent = (
     <>
       <div className="border-b border-sidebar-border px-6 py-5">
-        <p className="text-lg font-semibold tracking-tight text-foreground">
-          Qori
-        </p>
+        <div className="flex items-center gap-2">
+          <img src="/icon.png" alt="Qori" className="size-7" />
+          <p className="text-lg font-semibold tracking-tight text-foreground">
+            Qori
+          </p>
+        </div>
         <p className="text-xs text-muted-foreground">Personal dashboard</p>
       </div>
 
