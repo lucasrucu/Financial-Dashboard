@@ -67,11 +67,16 @@ By default, your Google OAuth app is in **Testing mode** — only explicitly add
 
 ### Option A — Add specific people as test users (simplest)
 
-In Google Cloud Console → **OAuth consent screen → Test users**, add each person's Gmail address. They can sign in immediately with no other changes. Best for 1–5 trusted people.
+1. Go to [Google Cloud Console](https://console.cloud.google.com) → **APIs & Services → OAuth consent screen**
+2. You'll be redirected into **Google Auth Platform** — click the **Audience** tab
+3. Scroll to **Test users** → **Add users** → enter each person's Gmail address
+
+They can sign in immediately. Best for 1–5 trusted people.
 
 ### Option B — Publish the OAuth app (for broader access)
 
-1. Google Cloud Console → **OAuth consent screen → Publish App**
+1. Google Cloud Console → **APIs & Services → OAuth consent screen** → **Google Auth Platform → Audience**
+2. Click **Publish App**
 2. Click **Confirm** — Google moves the app to production mode
 3. Users will see a warning screen ("This app isn't verified") the first time they sign in — they click **Advanced → Continue to [app name]** to proceed
 4. This is expected and safe for a small personal app; Google's full verification process is only required if you want to remove the warning
