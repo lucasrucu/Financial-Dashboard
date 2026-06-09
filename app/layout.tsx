@@ -20,7 +20,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Financial Dashboard",
+  title: "Qori",
   description: "Personal financial dashboard with Plaid and AI insights",
 };
 

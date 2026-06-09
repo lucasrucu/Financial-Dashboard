@@ -219,11 +219,25 @@ export function BcpStatementUpload() {
       <CardContent className="space-y-4">
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
           <div className="space-y-2">
-            <Label htmlFor="bcp-statement-file">Statement PDF</Label>
-            <Input
+            <Label>Statement PDF</Label>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById("bcp-statement-file")?.click()}
+              >
+                <FileUp className="size-4" />
+                Choose PDF
+              </Button>
+              <span className="max-w-[200px] truncate text-sm text-muted-foreground">
+                {selectedFile ? selectedFile.name : "No file chosen"}
+              </span>
+            </div>
+            <input
               id="bcp-statement-file"
               type="file"
               accept="application/pdf,.pdf"
+              className="hidden"
               onChange={handleFileChange}
             />
           </div>
@@ -232,7 +246,9 @@ export function BcpStatementUpload() {
             <Input
               id="bcp-statement-password"
               type="password"
-              placeholder="Uses BCP_PDF_PASSWORD if empty"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="Optional"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
