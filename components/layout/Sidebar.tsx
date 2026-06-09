@@ -116,7 +116,6 @@ export function Sidebar() {
             Qori
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">Personal dashboard</p>
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 p-4">
