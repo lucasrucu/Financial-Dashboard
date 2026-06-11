@@ -10,8 +10,10 @@ import {
   Sparkles,
   Menu,
   Target,
+  TrendingUp,
   Upload,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,14 +24,36 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { fetchOverviewStats } from "@/lib/overview";
 
-const navItems = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/transactions", label: "Transactions", icon: Receipt },
-  { href: "/import", label: "Import", icon: Upload },
-  { href: "/categories", label: "Categories", icon: FolderOpen },
-  { href: "/goals", label: "Goals", icon: Target },
-  { href: "/insights", label: "Insights", icon: Sparkles },
-] as const;
+type NavItem = { href: string; label: string; icon: LucideIcon };
+type NavSection = { section: string; items: NavItem[] };
+
+const navSections: NavSection[] = [
+  {
+    section: "",
+    items: [{ href: "/", label: "Overview", icon: LayoutDashboard }],
+  },
+  {
+    section: "Money",
+    items: [
+      { href: "/transactions", label: "Transactions", icon: Receipt },
+      { href: "/portfolio", label: "Portfolio", icon: TrendingUp },
+    ],
+  },
+  {
+    section: "Plan",
+    items: [
+      { href: "/goals", label: "Goals", icon: Target },
+      { href: "/insights", label: "Insights", icon: Sparkles },
+    ],
+  },
+  {
+    section: "Data",
+    items: [
+      { href: "/import", label: "Import", icon: Upload },
+      { href: "/categories", label: "Categories", icon: FolderOpen },
+    ],
+  },
+];
 
 function SignOutButton({ onSignedOut }: { onSignedOut?: () => void }) {
   const router = useRouter();
@@ -118,29 +142,40 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-4">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive =
-            href === "/" ? pathname === "/" : pathname.startsWith(href);
+      <nav className="flex flex-1 flex-col gap-4 p-4">
+        {navSections.map(({ section, items }) => (
+          <div key={section || "__top"}>
+            {section ? (
+              <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                {section}
+              </p>
+            ) : null}
+            <div className="flex flex-col gap-0.5">
+              {items.map(({ href, label, icon: Icon }) => {
+                const isActive =
+                  href === "/" ? pathname === "/" : pathname.startsWith(href);
 
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileOpen(false)}
-              onMouseEnter={() => prefetchRoute(queryClient, href)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
-              )}
-            >
-              <Icon className="size-4 shrink-0" />
-              {label}
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMobileOpen(false)}
+                    onMouseEnter={() => prefetchRoute(queryClient, href)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="size-4 shrink-0" />
+                    {label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-sidebar-border p-4">
