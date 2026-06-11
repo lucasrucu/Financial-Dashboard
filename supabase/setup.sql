@@ -109,6 +109,42 @@ create index if not exists statement_imports_account_idx on statement_imports (a
 create index if not exists statement_imports_period_idx  on statement_imports (period_start, period_end);
 create index if not exists statement_imports_user_idx    on statement_imports (user_id);
 
+-- ─── Fidelity Portfolio ───────────────────────────────────────────────────────
+
+create table if not exists portfolio_snapshots (
+  id              uuid        primary key default gen_random_uuid(),
+  user_id         uuid        references auth.users(id) on delete cascade not null,
+  snapshot_date   date        not null,
+  file_hash       text        unique not null,
+  position_count  integer     not null default 0,
+  total_value_usd numeric     not null default 0,
+  imported_at     timestamptz not null default now()
+);
+
+create index if not exists portfolio_snapshots_user_idx on portfolio_snapshots (user_id);
+create index if not exists portfolio_snapshots_date_idx on portfolio_snapshots (snapshot_date desc);
+
+create table if not exists stock_positions (
+  id                  uuid    primary key default gen_random_uuid(),
+  user_id             uuid    references auth.users(id) on delete cascade not null,
+  snapshot_id         uuid    references portfolio_snapshots(id) on delete cascade not null,
+  ticker              text    not null,
+  description         text,
+  quantity            numeric,
+  price_usd           numeric,
+  current_value_usd   numeric not null,
+  today_gain_usd      numeric,
+  today_gain_pct      numeric,
+  total_gain_usd      numeric,
+  total_gain_pct      numeric,
+  cost_basis_usd      numeric,
+  avg_cost_basis_usd  numeric,
+  is_money_market     boolean not null default false
+);
+
+create index if not exists stock_positions_snapshot_idx on stock_positions (snapshot_id);
+create index if not exists stock_positions_user_idx     on stock_positions (user_id);
+
 -- ─── Savings Goals ────────────────────────────────────────────────────────────
 
 create table if not exists goals (
@@ -144,14 +180,16 @@ create table if not exists exchange_rates (
 
 -- ─── Row Level Security ───────────────────────────────────────────────────────
 
-alter table categories        enable row level security;
-alter table plaid_items       enable row level security;
-alter table accounts          enable row level security;
-alter table transactions      enable row level security;
-alter table statement_imports enable row level security;
-alter table goals             enable row level security;
-alter table ai_cache          enable row level security;
-alter table exchange_rates    enable row level security;
+alter table categories          enable row level security;
+alter table plaid_items         enable row level security;
+alter table accounts            enable row level security;
+alter table transactions        enable row level security;
+alter table statement_imports   enable row level security;
+alter table portfolio_snapshots enable row level security;
+alter table stock_positions     enable row level security;
+alter table goals               enable row level security;
+alter table ai_cache            enable row level security;
+alter table exchange_rates      enable row level security;
 
 -- Categories
 drop policy if exists "categories_select_own" on categories;
@@ -202,6 +240,26 @@ drop policy if exists "statement_imports_update_own" on statement_imports;
 create policy "statement_imports_update_own" on statement_imports for update using (auth.uid() = user_id);
 drop policy if exists "statement_imports_delete_own" on statement_imports;
 create policy "statement_imports_delete_own" on statement_imports for delete using (auth.uid() = user_id);
+
+-- Portfolio snapshots
+drop policy if exists "portfolio_snapshots_select_own" on portfolio_snapshots;
+create policy "portfolio_snapshots_select_own" on portfolio_snapshots for select using (auth.uid() = user_id);
+drop policy if exists "portfolio_snapshots_insert_own" on portfolio_snapshots;
+create policy "portfolio_snapshots_insert_own" on portfolio_snapshots for insert with check (auth.uid() = user_id);
+drop policy if exists "portfolio_snapshots_update_own" on portfolio_snapshots;
+create policy "portfolio_snapshots_update_own" on portfolio_snapshots for update using (auth.uid() = user_id);
+drop policy if exists "portfolio_snapshots_delete_own" on portfolio_snapshots;
+create policy "portfolio_snapshots_delete_own" on portfolio_snapshots for delete using (auth.uid() = user_id);
+
+-- Stock positions
+drop policy if exists "stock_positions_select_own" on stock_positions;
+create policy "stock_positions_select_own" on stock_positions for select using (auth.uid() = user_id);
+drop policy if exists "stock_positions_insert_own" on stock_positions;
+create policy "stock_positions_insert_own" on stock_positions for insert with check (auth.uid() = user_id);
+drop policy if exists "stock_positions_update_own" on stock_positions;
+create policy "stock_positions_update_own" on stock_positions for update using (auth.uid() = user_id);
+drop policy if exists "stock_positions_delete_own" on stock_positions;
+create policy "stock_positions_delete_own" on stock_positions for delete using (auth.uid() = user_id);
 
 -- Goals
 drop policy if exists "goals_select_own" on goals;

@@ -10,6 +10,7 @@ import {
   Sparkles,
   Menu,
   Target,
+  TrendingUp,
   Upload,
   X,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/categories", label: "Categories", icon: FolderOpen },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/insights", label: "Insights", icon: Sparkles },
+  { href: "/portfolio", label: "Portfolio", icon: TrendingUp },
 ] as const;
 
 function SignOutButton({ onSignedOut }: { onSignedOut?: () => void }) {
