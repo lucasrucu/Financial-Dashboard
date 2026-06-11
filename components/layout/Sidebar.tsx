@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -135,7 +136,7 @@ export function Sidebar() {
     <>
       <div className="border-b border-sidebar-border px-6 py-5">
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="Qori" className="size-7" />
+          <Image src="/logo.png" alt="Qori" width={28} height={28} className="size-7" />
           <p className="text-lg font-semibold tracking-tight text-foreground">
             Qori
           </p>
