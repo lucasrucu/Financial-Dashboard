@@ -9,7 +9,7 @@ import {
   type Category,
 } from "@/lib/categories";
 import { getEffectiveBalancesForAccounts } from "@/lib/accountBalance";
-import type { AiAnalysisPayload } from "@/types/ai";
+import type { AiAnalysisPayload, AiPortfolioPosition } from "@/types/ai";
 import type { Goal } from "@/types/goal";
 import type { Transaction } from "@/types/transaction";
 
@@ -272,6 +272,44 @@ export async function buildAiAnalysisPayload(
 
   const period = `${range.start} to ${range.end}`;
 
+  // Fetch latest portfolio snapshot if one exists
+  const { data: snapshot } = await supabase
+    .from("portfolio_snapshots")
+    .select("id, snapshot_date, total_value_usd")
+    .eq("user_id", userId)
+    .order("snapshot_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let portfolio: AiAnalysisPayload["portfolio"] = null;
+
+  if (snapshot) {
+    const { data: positions } = await supabase
+      .from("stock_positions")
+      .select("ticker, current_value_usd, total_gain_usd, total_gain_pct, is_money_market")
+      .eq("snapshot_id", snapshot.id)
+      .order("current_value_usd", { ascending: false });
+
+    const mappedPositions: AiPortfolioPosition[] = (positions ?? []).map((p) => ({
+      ticker: p.ticker as string,
+      valueUsd: Number(p.current_value_usd),
+      gainUsd: p.total_gain_usd !== null ? Number(p.total_gain_usd) : null,
+      gainPct: p.total_gain_pct !== null ? Number(p.total_gain_pct) : null,
+      isMoneyMarket: Boolean(p.is_money_market),
+    }));
+
+    const totalGainUsd = mappedPositions.every((p) => p.gainUsd !== null)
+      ? mappedPositions.reduce((sum, p) => sum + (p.gainUsd ?? 0), 0)
+      : null;
+
+    portfolio = {
+      totalValueUsd: Number(snapshot.total_value_usd),
+      totalGainUsd,
+      snapshotDate: snapshot.snapshot_date as string,
+      positions: mappedPositions,
+    };
+  }
+
   return {
     period,
     totalIncome,
@@ -281,6 +319,7 @@ export async function buildAiAnalysisPayload(
     savingsRate,
     goals: goalProgress,
     flaggedTransactions,
+    portfolio,
   };
 }
 

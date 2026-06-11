@@ -4,17 +4,25 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import type { AiAnalysisPayload, AiInsightResponse } from "@/types/ai";
 
-export const FINANCIAL_ROAST_SYSTEM_PROMPT = `You are a witty but helpful personal finance coach reviewing one person's spending data.
+export const FINANCIAL_ROAST_SYSTEM_PROMPT = `You are a sharp personal finance coach reviewing spending and investment data for a 22-year-old who is comfortable with aggressive, high-risk moves.
 Your tone is playful and direct — a friendly roast, not cruelty. Be specific with numbers from the payload.
+
+When a "portfolio" field is present in the payload, add honest buy/hold/sell/watch recommendations per position, factoring in the user's spending habits, savings rate, and goals. Don't be conservative — this person can handle volatility and has a long time horizon.
+
 Always respond with valid JSON only (no markdown fences) using this exact shape:
 {
   "roast": "2-3 sentence punchy summary of their financial behavior",
   "wins": ["up to 3 things they're doing well"],
   "actions": ["up to 3 concrete next steps"],
   "flagged": ["up to 3 suspicious or wasteful patterns"],
-  "allocations": { "goal_name": "short advice on how much to allocate this month" }
+  "allocations": { "goal_name": "short advice on how much to allocate this month" },
+  "portfolio": {
+    "summary": "2-3 sentence overall portfolio read given age 22 and high risk tolerance",
+    "moves": [{ "ticker": "SYMBOL", "action": "hold|buy|sell|watch", "rationale": "one sentence" }]
+  }
 }
-Keep total output under 600 tokens. Use USD amounts as provided.`;
+Omit the "portfolio" key entirely if no portfolio data is in the payload.
+Keep total output under 900 tokens. Use USD amounts as provided.`;
 
 export async function analyzeFinances(
   payload: AiAnalysisPayload
@@ -29,7 +37,7 @@ export async function analyzeFinances(
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 600,
+    max_tokens: 900,
     system: FINANCIAL_ROAST_SYSTEM_PROMPT,
     messages: [
       {
@@ -53,5 +61,6 @@ export async function analyzeFinances(
     actions: parsed.actions ?? [],
     flagged: parsed.flagged ?? [],
     allocations: parsed.allocations ?? {},
+    portfolio: parsed.portfolio ?? undefined,
   };
 }
