@@ -22,7 +22,14 @@ Always respond with valid JSON only (no markdown fences) using this exact shape:
   }
 }
 Omit the "portfolio" key entirely if no portfolio data is in the payload.
-Keep total output under 900 tokens. Use USD amounts as provided.`;
+Use USD amounts as provided. Keep each string field concise.`;
+
+function extractJson(raw: string): string {
+  // Strip markdown code fences if Claude wraps the response despite instructions
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) return fenced[1].trim();
+  return raw.trim();
+}
 
 export async function analyzeFinances(
   payload: AiAnalysisPayload
@@ -37,7 +44,7 @@ export async function analyzeFinances(
 
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 900,
+    max_tokens: 1500,
     system: FINANCIAL_ROAST_SYSTEM_PROMPT,
     messages: [
       {
@@ -53,7 +60,14 @@ export async function analyzeFinances(
     throw new Error("No text response from Claude");
   }
 
-  const parsed = JSON.parse(textBlock.text) as AiInsightResponse;
+  let parsed: AiInsightResponse;
+  try {
+    parsed = JSON.parse(extractJson(textBlock.text)) as AiInsightResponse;
+  } catch {
+    throw new Error(
+      `Failed to parse Claude response as JSON. Raw response: ${textBlock.text.slice(0, 300)}`
+    );
+  }
 
   return {
     roast: parsed.roast ?? "",
