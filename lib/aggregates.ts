@@ -9,6 +9,7 @@ import {
   type Category,
 } from "@/lib/categories";
 import { getEffectiveBalancesForAccounts } from "@/lib/accountBalance";
+import { EXCLUDED_FROM_TOTALS_CATEGORY_IDS } from "@/constants/categories";
 import type { AiAnalysisPayload, AiPortfolioPosition } from "@/types/ai";
 import type { Goal } from "@/types/goal";
 import type { Transaction } from "@/types/transaction";
@@ -30,15 +31,19 @@ function getMonthRange(monthOffset = 0) {
   };
 }
 
+function isExcludedFromTotals(transaction: Transaction) {
+  return EXCLUDED_FROM_TOTALS_CATEGORY_IDS.has(transaction.category_id);
+}
+
 function sumSpending(transactions: Transaction[]) {
   return transactions
-    .filter((transaction) => transaction.amount_usd > 0)
+    .filter((transaction) => transaction.amount_usd > 0 && !isExcludedFromTotals(transaction))
     .reduce((sum, transaction) => sum + transaction.amount_usd, 0);
 }
 
 function sumIncome(transactions: Transaction[]) {
   return transactions
-    .filter((transaction) => transaction.amount_usd < 0)
+    .filter((transaction) => transaction.amount_usd < 0 && !isExcludedFromTotals(transaction))
     .reduce((sum, transaction) => sum + Math.abs(transaction.amount_usd), 0);
 }
 
@@ -105,7 +110,7 @@ async function buildCategoryTotals(
   const totals = new Map<string, number>();
 
   for (const transaction of transactions) {
-    if (transaction.amount_usd <= 0) continue;
+    if (transaction.amount_usd <= 0 || isExcludedFromTotals(transaction)) continue;
     totals.set(
       transaction.category_id,
       (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount_usd)
@@ -136,7 +141,7 @@ async function buildIncomeCategoryTotals(
   const totals = new Map<string, number>();
 
   for (const transaction of transactions) {
-    if (transaction.amount_usd >= 0) continue;
+    if (transaction.amount_usd >= 0 || isExcludedFromTotals(transaction)) continue;
     totals.set(
       transaction.category_id,
       (totals.get(transaction.category_id) ?? 0) + Math.abs(Number(transaction.amount_usd))
@@ -230,7 +235,7 @@ export async function buildAiAnalysisPayload(
   const merchantTotals = new Map<string, number>();
 
   for (const transaction of transactions) {
-    if (transaction.amount_usd <= 0) {
+    if (transaction.amount_usd <= 0 || isExcludedFromTotals(transaction)) {
       continue;
     }
 
@@ -258,7 +263,11 @@ export async function buildAiAnalysisPayload(
     .slice(0, 5);
 
   const flaggedTransactions = transactions
-    .filter((transaction) => transaction.is_recurring || transaction.amount_usd > 200)
+    .filter(
+      (transaction) =>
+        !isExcludedFromTotals(transaction) &&
+        (transaction.is_recurring || transaction.amount_usd > 200)
+    )
     .slice(0, 5)
     .map(
       (transaction) =>

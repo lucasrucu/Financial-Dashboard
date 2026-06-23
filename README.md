@@ -18,14 +18,10 @@
 </div>
 
 <p align="center">
-  <video src="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4" poster="docs/demo-poster.jpg" width="860" controls muted>
-    <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">
-      <img src="docs/demo-poster.jpg" alt="Watch the Qori demo" width="860" />
-    </a>
-  </video>
+  <img src="docs/demo.gif" alt="Qori demo — landing page, dashboard, transactions, and AI insights" width="860" />
 </p>
 
-<p align="center"><em>▶ <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">Watch the 20-second demo</a> · or <a href="https://qori.land/landing">try it live →</a></em></p>
+<p align="center"><em>▶ <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">Watch in full quality</a> · or <a href="https://qori.land/landing">try it live →</a></em></p>
 
 ---
 
