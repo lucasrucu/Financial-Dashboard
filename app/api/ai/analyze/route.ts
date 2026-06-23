@@ -6,6 +6,11 @@ import { buildAiAnalysisPayload } from "@/lib/aggregates";
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+// Cap real Claude calls per user per rolling 24h to prevent token-burn from
+// repeated "force" re-analysis. Each genuine analysis writes one ai_cache row,
+// so counting recent rows approximates calls made.
+const DAILY_ANALYSIS_LIMIT = 8;
+
 export async function GET(request: Request) {
   try {
     const auth = await requireUser();
@@ -35,6 +40,23 @@ export async function GET(request: Request) {
         created_at: cached.created_at,
         period: cached.period,
       });
+    }
+
+    // We're about to make a real Claude call — enforce the daily cap.
+    const since = new Date(Date.now() - CACHE_TTL_MS).toISOString();
+    const { count } = await supabase
+      .from("ai_cache")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", since);
+
+    if ((count ?? 0) >= DAILY_ANALYSIS_LIMIT) {
+      return NextResponse.json(
+        {
+          error:
+            "You've hit the daily limit for fresh AI analyses. Your most recent results are still available — try again tomorrow.",
+        },
+        { status: 429 }
+      );
     }
 
     const payload = await buildAiAnalysisPayload(supabase, user.id);

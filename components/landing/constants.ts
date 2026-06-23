@@ -3,14 +3,8 @@
 
 export const SIGN_IN_HREF = "/login";
 
-export const REQUEST_ACCESS_HREF =
-  "mailto:lucasruiz1336@gmail.com" +
-  "?subject=" +
-  encodeURIComponent("Qori access request") +
-  "&body=" +
-  encodeURIComponent(
-    "Hi Lucas,\n\nI'd like access to Qori. A bit about me:\n\n- Name:\n- What I'd use it for:\n\nThanks!"
-  );
+// "Request Access" buttons scroll to the form section at the bottom of /landing.
+export const REQUEST_ACCESS_HREF = "#request-access";
 
 export const GITHUB_HREF = "https://github.com/lucasrucu/Financial-Dashboard";
 
