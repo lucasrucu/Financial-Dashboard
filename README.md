@@ -17,13 +17,15 @@
 
 </div>
 
-<!--
-  Add a hero screenshot or GIF here. Capture the dashboard (or the /landing demo)
-  and save it as docs/landing.png, then this image will render at the top of the README.
--->
 <p align="center">
-  <img src="docs/landing.png" alt="Qori dashboard" width="900" />
+  <video src="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4" poster="docs/demo-poster.jpg" width="860" controls muted>
+    <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">
+      <img src="docs/demo-poster.jpg" alt="Watch the Qori demo" width="860" />
+    </a>
+  </video>
 </p>
+
+<p align="center"><em>▶ <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">Watch the 20-second demo</a> · or <a href="https://qori.land/landing">try it live →</a></em></p>
 
 ---
 
