@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
@@ -16,7 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const [loading, setLoading] = useState<"google" | "passkey" | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
     searchParams.get("error") === "auth"
       ? "Sign-in failed. Please try again."
@@ -27,7 +28,7 @@ function LoginForm() {
   const next = searchParams.get("next") ?? "/";
 
   async function signInWithGoogle() {
-    setLoading("google");
+    setLoading(true);
     setError(null);
 
     const { error: authError } = await supabase.auth.signInWithOAuth({
@@ -39,45 +40,22 @@ function LoginForm() {
 
     if (authError) {
       setError(authError.message);
-      setLoading(null);
-    }
-  }
-
-  async function signInWithPasskey() {
-    setLoading("passkey");
-    setError(null);
-
-    try {
-      const auth = supabase.auth as typeof supabase.auth & {
-        signInWithWebAuthn?: () => Promise<{ error: Error | null }>;
-      };
-
-      if (!auth.signInWithWebAuthn) {
-        setError("Passkey sign-in is not enabled in this Supabase project.");
-        setLoading(null);
-        return;
-      }
-
-      const { error: authError } = await auth.signInWithWebAuthn();
-
-      if (authError) {
-        setError(authError.message);
-        setLoading(null);
-        return;
-      }
-
-      await fetch("/api/auth/migrate-data", { method: "POST" });
-      window.location.href = next;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Passkey sign-in failed");
-      setLoading(null);
+      setLoading(false);
     }
   }
 
   return (
     <Card className="w-full max-w-md border-border bg-card">
-      <CardHeader className="text-center">
-        <CardTitle>Financial Dashboard</CardTitle>
+      <CardHeader className="items-center text-center">
+        <Image
+          src="/logo.png"
+          alt="Qori"
+          width={56}
+          height={56}
+          className="mx-auto mb-2 size-14"
+          priority
+        />
+        <CardTitle className="text-2xl">Qori</CardTitle>
         <CardDescription>Sign in to view your finances</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -85,36 +63,18 @@ function LoginForm() {
           type="button"
           className="w-full"
           onClick={signInWithGoogle}
-          disabled={loading !== null}
+          disabled={loading}
         >
-          {loading === "google" ? (
+          {loading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             "Continue with Google"
           )}
         </Button>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full border-border"
-          onClick={signInWithPasskey}
-          disabled={loading !== null}
-        >
-          {loading === "passkey" ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            "Sign in with passkey"
-          )}
-        </Button>
-
         {error ? (
           <p className="text-center text-sm text-negative">{error}</p>
         ) : null}
-
-        <p className="text-center text-xs text-muted-foreground">
-          Passkeys require WebAuthn enabled in Supabase Auth settings.
-        </p>
       </CardContent>
     </Card>
   );
