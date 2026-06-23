@@ -1,18 +1,58 @@
-# Financial Dashboard
+<div align="center">
 
-Personal finance dashboard that aggregates accounts from multiple sources, tracks spending, and surfaces AI-powered insights. Built for a US + Peru financial setup — supports Plaid-connected US bank accounts and BCP (Banco de Crédito del Perú) PDF statement imports with automatic USD/PEN conversion.
+<img src="public/logo.png" alt="Qori" width="72" height="72" />
+
+# Qori
+
+**Every account, every currency, one clear picture.**
+
+[![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=next.js&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Plaid](https://img.shields.io/badge/Plaid-Bank%20data-000000?logo=plaid&logoColor=white)](https://plaid.com)
+[![Claude](https://img.shields.io/badge/Claude-AI%20insights-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white)](https://vercel.com)
+
+### [▶ Explore the live demo →](https://qori.land/landing)
+
+</div>
+
+<p align="center">
+  <video src="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4" poster="docs/demo-poster.jpg" width="860" controls muted>
+    <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">
+      <img src="docs/demo-poster.jpg" alt="Watch the Qori demo" width="860" />
+    </a>
+  </video>
+</p>
+
+<p align="center"><em>▶ <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">Watch the 20-second demo</a> · or <a href="https://qori.land/landing">try it live →</a></em></p>
+
+---
+
+Qori is a personal finance platform that unifies a cross-border financial life into a single view. It pulls **live US bank accounts** through Plaid, parses **Peruvian BCP bank statements straight from PDF**, and imports **Fidelity brokerage holdings from CSV** — then normalizes everything to USD and puts an **AI analyst (Claude)** on top to turn the raw data into a candid monthly read on spending, savings, and portfolio moves. It's the end-to-end picture of a real product: multi-source data ingestion, authentication, an AI layer, and a deployed multi-currency UI.
+
+> **Try it without an account:** the [live demo](https://qori.land/landing) runs the real interface on sample data — click through spending, transactions, investments, and AI insights.
+
+---
+
+## How it works
+
+1. **Ingest** — connect US banks via Plaid for live transactions, upload BCP PDF statements (parsed server-side with `pdfjs-dist`), and import Fidelity positions from CSV.
+2. **Normalize** — every monetary value is stored in USD; BCP amounts are converted at import time, and PEN is rendered on demand using a daily-cached exchange rate.
+3. **Analyze** — on explicit request, transactions are pre-summarized and sent to Claude, which returns a structured analysis (wins, action items, flagged charges, goal allocations, portfolio moves). Results are cached for 24 hours.
+4. **Track** — net worth (with manual balance anchoring), category breakdowns, savings goals, and investment gains — all in one dashboard, toggleable between USD and PEN.
 
 ---
 
 ## Features
 
-- **Multi-source aggregation** — Plaid (US banks) and BCP PDF statements in one unified view
-- **AI insights** — on-demand spending analysis via Claude, cached for 24 hours
-- **Multi-currency** — toggle between USD and PEN; all values stored in USD, converted at render time
-- **Savings goals** — track progress toward named financial goals with deadlines
+- **Multi-source aggregation** — Plaid (US banks), BCP PDF statements, and Fidelity CSV in one unified ledger
+- **AI insights** — on-demand spending + portfolio analysis via Claude, cached for 24 hours
+- **Investments tracking** — positions, cost basis, and gains with AI hold/watch/sell suggestions
+- **Multi-currency** — toggle USD ↔ PEN; stored in USD, converted at render time
+- **Savings goals** — track progress toward named goals with deadlines
 - **Manual balance anchoring** — override live Plaid balances for net-worth accuracy
 - **Authentication** — Google OAuth and passkey sign-in via Supabase Auth; row-level security per user
-- **Custom categories** — user-managed spending categories with AI-suggested colors
 
 ---
 
@@ -28,15 +68,7 @@ Personal finance dashboard that aggregates accounts from multiple sources, track
 | Server cache | React Query (60 s stale time) |
 | UI | shadcn/ui + Tailwind CSS v3 + Recharts |
 | PDF parsing | pdfjs-dist (server-side) |
-
----
-
-## Prerequisites
-
-- Node.js 18+
-- A [Supabase](https://supabase.com) project
-- A [Plaid](https://plaid.com) account (Sandbox is free)
-- An [Anthropic](https://console.anthropic.com) API key
+| Hosting | Vercel |
 
 ---
 
@@ -87,7 +119,7 @@ See [docs/architecture.md](docs/architecture.md) for a full diagram of the auth 
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to `/login` until signed in.
+Open [http://localhost:3000](http://localhost:3000). Signed-out visitors land on the public `/landing` page; signing in takes you to the dashboard.
 
 ---
 

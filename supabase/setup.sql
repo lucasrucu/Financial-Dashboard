@@ -287,6 +287,27 @@ create policy "exchange_rates_select_auth" on exchange_rates for select to authe
 drop policy if exists "exchange_rates_insert_auth" on exchange_rates;
 create policy "exchange_rates_insert_auth" on exchange_rates for insert to authenticated with check (true);
 
+-- ─── Access Requests ──────────────────────────────────────────────────────────
+-- Public landing page "Request Access" submissions. Written only by the server
+-- (service role), never by end users. RLS is enabled with NO policies, so the
+-- anon/authenticated keys can neither read nor write it — only the service role
+-- (which bypasses RLS) can. The operator reads these in the Supabase dashboard.
+
+create table if not exists access_requests (
+  id         uuid        primary key default gen_random_uuid(),
+  email      text        not null,
+  note       text,
+  ip         text,
+  user_agent text,
+  status     text        not null default 'pending',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists access_requests_created_idx on access_requests (created_at desc);
+create index if not exists access_requests_email_idx on access_requests (lower(email));
+
+alter table access_requests enable row level security;
+
 -- ─── Seed Data ────────────────────────────────────────────────────────────────
 -- Starter goals are inserted per-user via the app on first login.
 -- System categories are seeded via GET /api/categories when a user has none.

@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_API_PREFIXES = ["/api/auth/"];
+const PUBLIC_API_PREFIXES = ["/api/auth/", "/api/access-request"];
 
 function isPublicApi(pathname: string) {
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -40,6 +40,19 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Public marketing page. Authenticated users skip it and go to the dashboard.
+  if (pathname === "/landing") {
+    if (user) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return supabaseResponse;
+  }
+
+  // Privacy policy is always public — readable signed in or out.
+  if (pathname === "/privacy") {
+    return supabaseResponse;
+  }
+
   if (pathname.startsWith("/login") || pathname.startsWith("/auth/")) {
     if (user && pathname === "/login") {
       return NextResponse.redirect(new URL("/", request.url));
@@ -60,6 +73,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user) {
+    // Bare domain → show the public landing page. Deeper links still route
+    // through /login so the user returns to where they were headed.
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/landing", request.url));
+    }
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", pathname);
