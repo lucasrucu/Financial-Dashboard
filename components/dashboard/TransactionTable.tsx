@@ -42,6 +42,7 @@ import {
   useTransactions,
 } from "@/hooks/useTransactions";
 import { cn, formatDate, formatDateShort } from "@/lib/utils";
+import { TRANSFER_CATEGORY_ID } from "@/constants/categories";
 import type { Category } from "@/types/category";
 import type { TransactionListResponse } from "@/types/transaction";
 import type { TransactionSortBy, TransactionSortOrder } from "@/types/transaction";
@@ -322,6 +323,17 @@ export function TransactionTable() {
     });
   }
 
+  function markSelectedAsTransfer() {
+    if (selectedIds.size === 0) {
+      return;
+    }
+
+    categoryMutation.mutate({
+      ids: Array.from(selectedIds),
+      category_id: TRANSFER_CATEGORY_ID,
+    });
+  }
+
   const total = data?.total ?? 0;
   const currentPage = data?.page ?? page;
   const pageSize = data?.pageSize ?? PAGE_SIZE;
@@ -393,6 +405,16 @@ export function TransactionTable() {
             ) : (
               "Apply category"
             )}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            title="Exclude these from spending & income totals"
+            disabled={categoryMutation.isPending}
+            onClick={markSelectedAsTransfer}
+          >
+            🔁 Mark as transfer
           </Button>
           <Button
             type="button"
@@ -623,11 +645,22 @@ export function TransactionTable() {
                             {transaction.name}
                           </p>
                         </div>
-                        {transaction.is_recurring ? (
-                          <Badge variant="secondary" className="text-[10px]">
-                            Recurring
-                          </Badge>
-                        ) : null}
+                        <div className="flex flex-wrap gap-1">
+                          {transaction.category_id === TRANSFER_CATEGORY_ID ? (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px]"
+                              title="Excluded from spending & income totals"
+                            >
+                              🔁 Transfer
+                            </Badge>
+                          ) : null}
+                          {transaction.is_recurring ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              Recurring
+                            </Badge>
+                          ) : null}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden w-[180px] md:table-cell">

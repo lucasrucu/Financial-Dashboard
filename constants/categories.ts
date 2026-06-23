@@ -16,13 +16,28 @@ export const INCOME_CATEGORIES = [
   { id: "other_income", label: "Other Income", icon: "📥", color: "#06b6d4" },
 ] as const;
 
+// Money moved between the user's own accounts. Neither income nor spending —
+// excluded from all totals (see EXCLUDED_FROM_TOTALS_CATEGORY_IDS). The fee/FX
+// loss on a transfer is still reflected in net worth via account balances.
+export const TRANSFER_CATEGORY_ID = "transfer";
+
+export const TRANSFER_CATEGORIES = [
+  { id: TRANSFER_CATEGORY_ID, label: "Transfer", icon: "🔁", color: "#64748b" },
+] as const;
+
 export const DEFAULT_CATEGORIES = [
   ...SPENDING_CATEGORIES,
   ...INCOME_CATEGORIES,
+  ...TRANSFER_CATEGORIES,
 ] as const;
+
+// Category ids whose transactions are excluded from income, spending, category
+// breakdowns, and the AI analysis payload. Single source of truth.
+export const EXCLUDED_FROM_TOTALS_CATEGORY_IDS = new Set<string>([TRANSFER_CATEGORY_ID]);
 
 export type SpendingCategoryId = (typeof SPENDING_CATEGORIES)[number]["id"];
 export type IncomeCategoryId = (typeof INCOME_CATEGORIES)[number]["id"];
+export type TransferCategoryId = (typeof TRANSFER_CATEGORIES)[number]["id"];
 export type CategoryId = (typeof DEFAULT_CATEGORIES)[number]["id"];
 
 export type SpendingCategory = (typeof SPENDING_CATEGORIES)[number];

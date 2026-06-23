@@ -1,4 +1,5 @@
 import { TransactionTable } from "@/components/dashboard/TransactionTable";
+import { TransferSuggestions } from "@/components/dashboard/TransferSuggestions";
 import { PageWrapper } from "@/components/layout/PageWrapper";
 
 export default function TransactionsPage() {
@@ -7,7 +8,10 @@ export default function TransactionsPage() {
       title="Transactions"
       description="Browse, filter, and categorize your transactions."
     >
-      <TransactionTable />
+      <div className="space-y-4">
+        <TransferSuggestions />
+        <TransactionTable />
+      </div>
     </PageWrapper>
   );
 }
