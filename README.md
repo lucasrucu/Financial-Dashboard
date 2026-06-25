@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="app/icon.svg" alt="Financial Dashboard" width="72" height="72" />
+<img src="app/icon.svg" width="72" height="72" alt="Financial Dashboard" />
 
 # Financial Dashboard
 
@@ -13,36 +13,45 @@
 [![Claude](https://img.shields.io/badge/Claude-AI%20insights-D97757?logo=anthropic&logoColor=white)](https://www.anthropic.com)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white)](https://vercel.com)
 
-### [▶ Explore the live demo →](https://qori.land/landing)
+### [▶ Live demo →](https://finance.qori.land/landing)
 
 </div>
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Qori demo — landing page, dashboard, transactions, and AI insights" width="860" />
+  <img src="docs/cover.png" alt="Financial Dashboard — landing page" width="900" />
 </p>
 
-<p align="center"><em>▶ <a href="https://github.com/lucasrucu/Financial-Dashboard/raw/master/docs/demo.mp4">Watch in full quality</a> · or <a href="https://qori.land/landing">try it live →</a></em></p>
-
 ---
 
-Qori is a personal finance platform that unifies a cross-border financial life into a single view. It pulls **live US bank accounts** through Plaid, parses **Peruvian BCP bank statements straight from PDF**, and imports **Fidelity brokerage holdings from CSV** — then normalizes everything to USD and puts an **AI analyst (Claude)** on top to turn the raw data into a candid monthly read on spending, savings, and portfolio moves. It's the end-to-end picture of a real product: multi-source data ingestion, authentication, an AI layer, and a deployed multi-currency UI.
+Financial Dashboard is a personal finance platform that unifies a cross-border financial life into a
+single view. It pulls **live US bank accounts** through Plaid, parses **Peruvian BCP bank statements
+straight from PDF**, and imports **Fidelity brokerage holdings from CSV** — then normalizes everything
+to USD and puts an **AI analyst (Claude)** on top to turn the raw data into a candid monthly read on
+spending, savings, and portfolio moves. It's a full product end to end: multi-source data ingestion,
+authentication, an AI layer, and a deployed multi-currency UI.
 
-> **Try it without an account:** the [live demo](https://qori.land/landing) runs the real interface on sample data — click through spending, transactions, investments, and AI insights.
+> **Try it without an account:** the [live demo](https://finance.qori.land/landing) runs the real
+> interface on sample data — click through spending, transactions, investments, and AI insights.
 
----
+<p align="center">
+  <img src="docs/demo.gif" alt="Financial Dashboard demo — landing, dashboard, transactions, AI insights" width="860" />
+</p>
 
-## How it works
+## What it does
 
-1. **Ingest** — connect US banks via Plaid for live transactions, upload BCP PDF statements (parsed server-side with `pdfjs-dist`), and import Fidelity positions from CSV.
-2. **Normalize** — every monetary value is stored in USD; BCP amounts are converted at import time, and PEN is rendered on demand using a daily-cached exchange rate.
-3. **Analyze** — on explicit request, transactions are pre-summarized and sent to Claude, which returns a structured analysis (wins, action items, flagged charges, goal allocations, portfolio moves). Results are cached for 24 hours.
-4. **Track** — net worth (with manual balance anchoring), category breakdowns, savings goals, and investment gains — all in one dashboard, toggleable between USD and PEN.
+1. **Ingest** — connect US banks via Plaid for live transactions, upload BCP PDF statements (parsed
+   server-side with `pdfjs-dist`), and import Fidelity positions from CSV.
+2. **Normalize** — every monetary value is stored in USD; BCP amounts are converted at import time,
+   and PEN is rendered on demand using a daily-cached exchange rate.
+3. **Analyze** — on request, transactions are pre-summarized and sent to Claude, which returns a
+   structured analysis (wins, action items, flagged charges, goal allocations, portfolio moves),
+   cached for 24 hours.
+4. **Track** — net worth, category breakdowns, savings goals, and investment gains — one dashboard,
+   toggleable between USD and PEN.
 
----
+## Highlights
 
-## Features
-
-- **Multi-source aggregation** — Plaid (US banks), BCP PDF statements, and Fidelity CSV in one unified ledger
+- **Multi-source aggregation** — Plaid (US banks), BCP PDF statements, and Fidelity CSV in one ledger
 - **AI insights** — on-demand spending + portfolio analysis via Claude, cached for 24 hours
 - **Investments tracking** — positions, cost basis, and gains with AI hold/watch/sell suggestions
 - **Multi-currency** — toggle USD ↔ PEN; stored in USD, converted at render time
@@ -50,79 +59,47 @@ Qori is a personal finance platform that unifies a cross-border financial life i
 - **Manual balance anchoring** — override live Plaid balances for net-worth accuracy
 - **Authentication** — Google OAuth and passkey sign-in via Supabase Auth; row-level security per user
 
----
-
-## Tech Stack
+## Tech stack
 
 | Layer | Choice |
 |---|---|
 | Framework | Next.js 14 App Router, TypeScript 5 strict |
 | Database | Supabase (PostgreSQL) |
-| Bank connectivity | Plaid SDK v42 |
+| Bank connectivity | Plaid SDK |
 | AI | Anthropic SDK — Claude Sonnet |
-| State | Zustand (currency localStorage, AI insights sessionStorage) |
-| Server cache | React Query (60 s stale time) |
-| UI | shadcn/ui + Tailwind CSS v3 + Recharts |
+| State | Zustand · React Query |
+| UI | shadcn/ui + Tailwind CSS + Recharts |
 | PDF parsing | pdfjs-dist (server-side) |
 | Hosting | Vercel |
 
----
-
-## Local Development
-
-### 1. Install dependencies
+## Run it locally
 
 ```bash
 npm install
+cp .env.example .env.local   # fill in the values below
+npm run dev                  # http://localhost:3000
 ```
 
-### 2. Configure environment variables
+Keys you'll need: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV`, `ANTHROPIC_API_KEY`,
+`BCP_PDF_PASSWORD`. Then apply `supabase/setup.sql` in the Supabase SQL editor, enable the Google
+auth provider, and add `http://localhost:3000/auth/callback` to the Supabase redirect allow-list.
+Full walkthrough in [docs/deployment.md](docs/deployment.md).
 
-```bash
-cp .env.example .env.local
-```
+## Roadmap
 
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (public) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-only) |
-| `PLAID_CLIENT_ID` | Plaid client ID |
-| `PLAID_SECRET` | Plaid secret for the target environment |
-| `PLAID_ENV` | `sandbox` \| `development` \| `production` |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
-| `BCP_PDF_PASSWORD` | Password used to decrypt BCP PDF statements |
-
-### 3. Set up the database
-
-```
-Supabase Dashboard → SQL Editor → paste contents of supabase/setup.sql → Run
-```
-
-### 4. Configure Google OAuth
-
-1. **Supabase Dashboard** → Authentication → Providers → **Google** → Enable
-2. Create OAuth credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) (type: Web application)
-3. Add `http://localhost:3000` to Authorized JavaScript origins and `https://<project-ref>.supabase.co/auth/v1/callback` to Authorized redirect URIs
-4. Copy the **Client ID** and **Client Secret** into Supabase — both are required
-5. In Supabase → Authentication → URL Configuration, set Site URL to `http://localhost:3000` and add `http://localhost:3000/auth/callback` to Redirect URLs
-
-See [docs/architecture.md](docs/architecture.md) for a full diagram of the auth flow and URL configuration table.
-
-### 5. Start the dev server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). Signed-out visitors land on the public `/landing` page; signing in takes you to the dashboard.
-
----
+- Recurring-transaction detection with budget tracking
+- Scheduled monthly AI summaries delivered by email
+- Broader institution coverage (more banks and brokerages)
 
 ## Docs
 
 | Doc | Contents |
 |---|---|
-| [docs/architecture.md](docs/architecture.md) | System diagram, Google sign-in flow, request path, security decisions, project structure |
-| [docs/deployment.md](docs/deployment.md) | Vercel deployment guide, environment variables, sharing with others (Google OAuth publishing) |
+| [docs/architecture.md](docs/architecture.md) | System diagram, sign-in flow, request path, security decisions |
+| [docs/deployment.md](docs/deployment.md) | Vercel deployment, environment variables, sharing with others |
 | [docs/database.md](docs/database.md) | Schema overview, key columns, row-level security |
+
+---
+
+Part of **[Qori](https://qori.land)** · built by **Lucas Ruiz**
