@@ -23,7 +23,7 @@ export function LandingHero() {
           <span className="text-primary">one clear picture.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-balance text-lg text-muted-foreground">
-          Qori pulls together your US banks, Peruvian bank statements, and brokerage holdings —
+          Financial Dashboard pulls together your US banks, Peruvian bank statements, and brokerage holdings —
           then puts an AI analyst on top to tell you what it actually means.
         </p>
 

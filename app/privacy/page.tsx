@@ -5,8 +5,8 @@ import { LandingNav } from "@/components/landing/LandingNav";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Qori",
-  description: "What Qori collects, how it's stored, who can access it, and how to request deletion.",
+  title: "Privacy Policy — Financial Dashboard",
+  description: "What Financial Dashboard collects, how it's stored, who can access it, and how to request deletion.",
 };
 
 const LAST_UPDATED = "June 23, 2026";
@@ -30,10 +30,10 @@ export default function PrivacyPage() {
 
         <div className="mt-10 space-y-10">
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Qori is a personal finance dashboard operated by an individual (&quot;the
+            Financial Dashboard is a personal finance dashboard operated by an individual (&quot;the
             operator&quot;). It is invite-only and handles sensitive financial data. This page
             explains, in plain language, what is collected, how it is stored, who can access it,
-            and how to have it deleted. By requesting access and using Qori, you consent to the
+            and how to have it deleted. By requesting access and using Financial Dashboard, you consent to the
             practices described here.
           </p>
 
@@ -51,7 +51,7 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong className="text-foreground">Bank access tokens</strong> — Plaid issues a
-                token that lets Qori read your connected accounts on your behalf; it is stored to
+                token that lets Financial Dashboard read your connected accounts on your behalf; it is stored to
                 keep balances in sync.
               </li>
               <li>
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="Third parties">
-            <p>Qori shares data with these processors only as needed to function:</p>
+            <p>Financial Dashboard shares data with these processors only as needed to function:</p>
             <ul className="list-disc space-y-1.5 pl-5">
               <li><strong className="text-foreground">Supabase</strong> — database, authentication, and hosting of your data.</li>
               <li><strong className="text-foreground">Plaid</strong> — secure connection to US bank accounts.</li>
@@ -101,7 +101,7 @@ export default function PrivacyPage() {
               Be aware: as the database administrator, the operator has technical access to all
               stored data, including your transactions and bank tokens. This is inherent to running
               any hosted service — your data is not hidden from the operator. It is accessed only to
-              run and maintain Qori, never shared, and never sold. If that level of trust isn&apos;t
+              run and maintain Financial Dashboard, never shared, and never sold. If that level of trust isn&apos;t
               right for you, please don&apos;t connect a live account.
             </p>
           </Section>
@@ -110,7 +110,7 @@ export default function PrivacyPage() {
             <p>
               Your data is kept while your account is active. You can request deletion of your
               account and all associated data at any time, and connected bank tokens can be revoked
-              so Qori loses access immediately. To do so, email the operator (below).
+              so Financial Dashboard loses access immediately. To do so, email the operator (below).
             </p>
           </Section>
 
@@ -118,7 +118,7 @@ export default function PrivacyPage() {
             <p>
               Questions, data requests, or deletion:{" "}
               <a
-                href="mailto:lucasruiz1336@gmail.com?subject=Qori%20privacy%20request"
+                href="mailto:lucasruiz1336@gmail.com?subject=Financial%20Dashboard%20privacy%20request"
                 className="text-primary underline-offset-4 hover:underline"
               >
                 lucasruiz1336@gmail.com
@@ -129,14 +129,14 @@ export default function PrivacyPage() {
 
           <Section title="Changes">
             <p>
-              This policy may be updated as Qori evolves; the date at the top reflects the latest
+              This policy may be updated as Financial Dashboard evolves; the date at the top reflects the latest
               version.
             </p>
           </Section>
 
           <p className="pt-4 text-sm">
             <Link href="/landing" className="text-primary underline-offset-4 hover:underline">
-              ← Back to Qori
+              ← Back to Financial Dashboard
             </Link>
           </p>
         </div>

@@ -89,7 +89,7 @@ export function RequestAccessForm() {
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="ra-note" className="text-sm font-medium">
-          What would you use Qori for?{" "}
+          What would you use Financial Dashboard for?{" "}
           <span className="font-normal text-muted-foreground">(optional)</span>
         </label>
         <textarea
