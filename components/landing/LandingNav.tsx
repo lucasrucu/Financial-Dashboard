@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 
+import { QoriMark } from "@/components/QoriMark";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { APP_NAME, REQUEST_ACCESS_HREF, SIGN_IN_HREF } from "@/components/landing/constants";
@@ -10,8 +10,7 @@ export function LandingNav() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-3">
         <Link href="/landing" className="flex items-center gap-2">
-          <Image src="/logo.png" alt={APP_NAME} width={28} height={28} className="size-7" />
-          <span className="text-lg font-semibold tracking-tight">{APP_NAME}</span>
+          <QoriMark glyph="wallet" label={APP_NAME} size={28} />
         </Link>
 
         <div className="flex items-center gap-2">
