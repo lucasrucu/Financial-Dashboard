@@ -75,7 +75,12 @@ export async function GET(request: Request) {
       period: payload.period,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to analyze finances";
+    // Log the full error server-side for debugging.
+    console.error("[api/ai/analyze] analysis failed:", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to analyze finances. Please try again.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
