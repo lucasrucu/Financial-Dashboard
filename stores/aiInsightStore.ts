@@ -43,7 +43,9 @@ export const useAiInsightStore = create<AiInsightState>()(
     }),
     {
       name: "financial-dashboard-ai-insight",
-      storage: createJSONStorage(() => sessionStorage),
+      // localStorage (not sessionStorage) so a cached roast survives tab close/reopen,
+      // matching the server-side 24h ai_cache TTL — clearing is explicit via clearInsight.
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

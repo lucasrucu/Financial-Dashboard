@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
-import {
-  getCategoryData,
-  getIncomeCategoryBreakdown,
-  getMonthlyIncome,
-  getMonthlySpendingComparison,
-  getNetWorth,
-} from "@/lib/aggregates";
+import { getOverviewData } from "@/lib/aggregates";
 
 export const dynamic = "force-dynamic";
 
@@ -23,34 +17,9 @@ export async function GET(request: Request) {
 
     const { supabase, user } = auth;
 
-    const [
-      netWorth,
-      spendingComparison,
-      { topCategories, categoryBreakdown },
-      incomeBreakdown,
-      monthlyIncome,
-    ] = await Promise.all([
-      getNetWorth(supabase),
-      getMonthlySpendingComparison(supabase, monthOffset),
-      getCategoryData(supabase, user.id, 3, monthOffset),
-      getIncomeCategoryBreakdown(supabase, user.id, monthOffset),
-      getMonthlyIncome(supabase, monthOffset),
-    ]);
+    const overview = await getOverviewData(supabase, user.id, monthOffset);
 
-    const monthlySpending = spendingComparison.currentSpending;
-
-    return NextResponse.json({
-      netWorth,
-      spendingComparison,
-      topCategories,
-      categoryBreakdown,
-      incomeBreakdown,
-      monthlySummary: {
-        income: monthlyIncome,
-        spending: monthlySpending,
-        net: monthlyIncome - monthlySpending,
-      },
-    });
+    return NextResponse.json(overview);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch overview stats";
     return NextResponse.json({ error: message }, { status: 500 });

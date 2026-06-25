@@ -37,6 +37,10 @@ async function fetchTransactions(filters: TransactionFilters) {
     params.set("sortOrder", filters.sortOrder);
   }
 
+  if (filters.recurringOnly) {
+    params.set("recurringOnly", "true");
+  }
+
   if (filters.page) {
     params.set("page", String(filters.page));
   }

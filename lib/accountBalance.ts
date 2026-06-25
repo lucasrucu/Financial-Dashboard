@@ -74,11 +74,20 @@ export async function getEffectiveBalanceForAccount(
 }
 
 export async function getEffectiveBalancesForAccounts(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  userId?: string
 ): Promise<Map<string, number>> {
-  const { data: accounts, error } = await supabase
+  // RLS scopes this to the session user; when a userId is supplied we also filter
+  // explicitly as defense-in-depth against a misconfigured policy.
+  let accountsQuery = supabase
     .from("accounts")
     .select("id, balance_usd, balance_anchor_usd, balance_anchor_date");
+
+  if (userId) {
+    accountsQuery = accountsQuery.eq("user_id", userId);
+  }
+
+  const { data: accounts, error } = await accountsQuery;
 
   if (error) {
     throw new Error(error.message);

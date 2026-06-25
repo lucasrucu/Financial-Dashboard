@@ -41,7 +41,11 @@ export function useAiInsight() {
         storedRef.current.setInsight(data);
         queryClient.setQueryData(["ai-insight"], data);
       })
-      .catch(() => {});
+      .catch((error) => {
+        // Background auto-fetch — don't surface an error before the user has even
+        // clicked "Roast my finances", but log it so failures aren't silent.
+        console.error("[useAiInsight] auto-fetch failed:", error);
+      });
   }, []); // Zustand store ref is stable — intentionally empty
 
   const mutation = useMutation({

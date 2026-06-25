@@ -14,6 +14,10 @@ import type { AiAnalysisPayload, AiPortfolioPosition } from "@/types/ai";
 import type { Goal } from "@/types/goal";
 import type { Transaction } from "@/types/transaction";
 
+// Cap how many portfolio positions ship to the AI. Same root cause as the roast
+// JSON-parse bug — an uncapped holdings list bloats the prompt and the response.
+const MAX_AI_PORTFOLIO_POSITIONS = 25;
+
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -49,12 +53,16 @@ function sumIncome(transactions: Transaction[]) {
 
 export async function fetchTransactionsInRange(
   supabase: SupabaseClient,
+  userId: string,
   start: string,
   end: string
 ) {
+  // RLS already scopes reads to the session user; the explicit user_id filter is
+  // defense-in-depth so a misconfigured policy can't widen the result set.
   const { data, error } = await supabase
     .from("transactions")
     .select("*")
+    .eq("user_id", userId)
     .gte("date", start)
     .lte("date", end);
 
@@ -65,149 +73,103 @@ export async function fetchTransactionsInRange(
   return data ?? [];
 }
 
-export async function getNetWorth(supabase: SupabaseClient) {
-  const effectiveBalances = await getEffectiveBalancesForAccounts(supabase);
-  return Array.from(effectiveBalances.values()).reduce((sum, balance) => sum + balance, 0);
+interface CategoryTotal {
+  categoryId: string;
+  label: string;
+  color: string;
+  amount: number;
 }
 
-export async function getMonthlySpendingComparison(
+// Pure, in-memory aggregation over an already-fetched transaction list — lets the
+// overview path fetch each month's transactions once and derive every metric from
+// them, instead of re-querying the same range per metric.
+function computeCategoryTotals(
+  transactions: Transaction[],
+  categoryMap: Map<string, Category>,
+  direction: "spending" | "income"
+): CategoryTotal[] {
+  const totals = new Map<string, number>();
+
+  for (const transaction of transactions) {
+    if (isExcludedFromTotals(transaction)) continue;
+    const amount = Number(transaction.amount_usd);
+    if (direction === "spending" && amount <= 0) continue;
+    if (direction === "income" && amount >= 0) continue;
+
+    const value = direction === "spending" ? amount : Math.abs(amount);
+    totals.set(
+      transaction.category_id,
+      (totals.get(transaction.category_id) ?? 0) + value
+    );
+  }
+
+  return Array.from(totals.entries())
+    .map(([categoryId, amount]) => ({
+      categoryId,
+      label: resolveCategoryLabel(categoryId, categoryMap),
+      color: resolveCategoryColor(categoryId, categoryMap),
+      amount,
+    }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+function toBreakdown({ categoryId, label, color, amount }: CategoryTotal) {
+  return { categoryId, name: label, color, amount };
+}
+
+// Single source of truth for the dashboard overview. Fetches this month's and last
+// month's transactions (plus categories and balances) once, then computes net worth,
+// the spending comparison, category/income breakdowns, and the monthly summary from
+// those in-memory arrays — previously each metric re-queried the same date range.
+export async function getOverviewData(
   supabase: SupabaseClient,
+  userId: string,
   monthOffset = 0
 ) {
   const currentRange = getMonthRange(monthOffset);
   const previousRange = getMonthRange(monthOffset - 1);
 
-  const [currentTransactions, previousTransactions] = await Promise.all([
-    fetchTransactionsInRange(supabase, currentRange.start, currentRange.end),
-    fetchTransactionsInRange(supabase, previousRange.start, previousRange.end),
-  ]);
+  const [currentTransactions, previousTransactions, categories, effectiveBalances] =
+    await Promise.all([
+      fetchTransactionsInRange(supabase, userId, currentRange.start, currentRange.end),
+      fetchTransactionsInRange(supabase, userId, previousRange.start, previousRange.end),
+      ensureDefaultCategories(supabase, userId),
+      getEffectiveBalancesForAccounts(supabase, userId),
+    ]);
+
+  const categoryMap = buildCategoryMap(categories);
+
+  const netWorth = Array.from(effectiveBalances.values()).reduce(
+    (sum, balance) => sum + balance,
+    0
+  );
 
   const currentSpending = sumSpending(currentTransactions);
   const previousSpending = sumSpending(previousTransactions);
   const delta = currentSpending - previousSpending;
   const percentChange =
     previousSpending === 0 ? 0 : (delta / previousSpending) * 100;
+  const monthlyIncome = sumIncome(currentTransactions);
+
+  const spendingTotals = computeCategoryTotals(currentTransactions, categoryMap, "spending");
+  const incomeTotals = computeCategoryTotals(currentTransactions, categoryMap, "income");
 
   return {
-    currentSpending,
-    previousSpending,
-    delta,
-    percentChange,
-  };
-}
-
-async function buildCategoryTotals(
-  supabase: SupabaseClient,
-  userId: string,
-  monthOffset = 0
-) {
-  const range = getMonthRange(monthOffset);
-  const [transactions, categories] = await Promise.all([
-    fetchTransactionsInRange(supabase, range.start, range.end),
-    ensureDefaultCategories(supabase, userId),
-  ]);
-  const categoryMap = buildCategoryMap(categories);
-  const totals = new Map<string, number>();
-
-  for (const transaction of transactions) {
-    if (transaction.amount_usd <= 0 || isExcludedFromTotals(transaction)) continue;
-    totals.set(
-      transaction.category_id,
-      (totals.get(transaction.category_id) ?? 0) + Number(transaction.amount_usd)
-    );
-  }
-
-  return Array.from(totals.entries())
-    .map(([categoryId, amount]) => ({
-      categoryId,
-      label: resolveCategoryLabel(categoryId, categoryMap),
-      color: resolveCategoryColor(categoryId, categoryMap),
-      amount,
-    }))
-    .sort((a, b) => b.amount - a.amount);
-}
-
-async function buildIncomeCategoryTotals(
-  supabase: SupabaseClient,
-  userId: string,
-  monthOffset = 0
-) {
-  const range = getMonthRange(monthOffset);
-  const [transactions, categories] = await Promise.all([
-    fetchTransactionsInRange(supabase, range.start, range.end),
-    ensureDefaultCategories(supabase, userId),
-  ]);
-  const categoryMap = buildCategoryMap(categories);
-  const totals = new Map<string, number>();
-
-  for (const transaction of transactions) {
-    if (transaction.amount_usd >= 0 || isExcludedFromTotals(transaction)) continue;
-    totals.set(
-      transaction.category_id,
-      (totals.get(transaction.category_id) ?? 0) + Math.abs(Number(transaction.amount_usd))
-    );
-  }
-
-  return Array.from(totals.entries())
-    .map(([categoryId, amount]) => ({
-      categoryId,
-      label: resolveCategoryLabel(categoryId, categoryMap),
-      color: resolveCategoryColor(categoryId, categoryMap),
-      amount,
-    }))
-    .sort((a, b) => b.amount - a.amount);
-}
-
-export async function getTopCategories(
-  supabase: SupabaseClient,
-  userId: string,
-  limit = 3,
-  monthOffset = 0
-) {
-  return (await buildCategoryTotals(supabase, userId, monthOffset)).slice(0, limit);
-}
-
-export async function getCategoryBreakdown(
-  supabase: SupabaseClient,
-  userId: string,
-  monthOffset = 0
-) {
-  return (await buildCategoryTotals(supabase, userId, monthOffset)).map(
-    ({ categoryId, label, color, amount }) => ({ categoryId, name: label, color, amount })
-  );
-}
-
-export async function getIncomeCategoryBreakdown(
-  supabase: SupabaseClient,
-  userId: string,
-  monthOffset = 0
-) {
-  return (await buildIncomeCategoryTotals(supabase, userId, monthOffset)).map(
-    ({ categoryId, label, color, amount }) => ({ categoryId, name: label, color, amount })
-  );
-}
-
-export async function getMonthlyIncome(supabase: SupabaseClient, monthOffset = 0) {
-  const range = getMonthRange(monthOffset);
-  const transactions = await fetchTransactionsInRange(supabase, range.start, range.end);
-  return sumIncome(transactions);
-}
-
-export async function getCategoryData(
-  supabase: SupabaseClient,
-  userId: string,
-  topLimit = 3,
-  monthOffset = 0
-) {
-  const sorted = await buildCategoryTotals(supabase, userId, monthOffset);
-  return {
-    topCategories: sorted.slice(0, topLimit),
-    categoryBreakdown: sorted.map(({ categoryId, label, color, amount }) => ({
-      categoryId,
-      name: label,
-      color,
-      amount,
-    })),
+    netWorth,
+    spendingComparison: {
+      currentSpending,
+      previousSpending,
+      delta,
+      percentChange,
+    },
+    topCategories: spendingTotals.slice(0, 3),
+    categoryBreakdown: spendingTotals.map(toBreakdown),
+    incomeBreakdown: incomeTotals.map(toBreakdown),
+    monthlySummary: {
+      income: monthlyIncome,
+      spending: currentSpending,
+      net: monthlyIncome - currentSpending,
+    },
   };
 }
 
@@ -216,11 +178,19 @@ export async function buildAiAnalysisPayload(
   userId: string
 ): Promise<AiAnalysisPayload> {
   const range = getMonthRange(0);
-  const transactions = await fetchTransactionsInRange(supabase, range.start, range.end);
+  const transactions = await fetchTransactionsInRange(
+    supabase,
+    userId,
+    range.start,
+    range.end
+  );
   const categories = await seedCategoriesIfEmpty(supabase, userId);
   const categoryMap = buildCategoryMap(categories);
 
-  const { data: goals, error } = await supabase.from("goals").select("*");
+  const { data: goals, error } = await supabase
+    .from("goals")
+    .select("*")
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(error.message);
@@ -296,8 +266,10 @@ export async function buildAiAnalysisPayload(
     const { data: positions } = await supabase
       .from("stock_positions")
       .select("ticker, current_value_usd, total_gain_usd, total_gain_pct, is_money_market")
+      .eq("user_id", userId)
       .eq("snapshot_id", snapshot.id)
-      .order("current_value_usd", { ascending: false });
+      .order("current_value_usd", { ascending: false })
+      .limit(MAX_AI_PORTFOLIO_POSITIONS);
 
     const mappedPositions: AiPortfolioPosition[] = (positions ?? []).map((p) => ({
       ticker: p.ticker as string,

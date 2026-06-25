@@ -26,6 +26,7 @@ export interface TransactionFilters {
   accountId?: string;
   sortBy?: TransactionSortBy;
   sortOrder?: TransactionSortOrder;
+  recurringOnly?: boolean;
   page?: number;
   pageSize?: number;
 }

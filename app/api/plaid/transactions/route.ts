@@ -29,6 +29,7 @@ export async function GET(request: Request) {
       ? (sortByParam as TransactionSortBy)
       : "date";
     const sortOrder = sortOrderParam === "asc" ? "asc" : "desc";
+    const recurringOnly = searchParams.get("recurringOnly") === "true";
     const page = Math.max(1, Number(searchParams.get("page") ?? 1));
     const pageSize = Math.min(
       100,
@@ -56,6 +57,10 @@ export async function GET(request: Request) {
 
     if (accountId) {
       query = query.eq("account_id", accountId);
+    }
+
+    if (recurringOnly) {
+      query = query.eq("is_recurring", true);
     }
 
     if (search) {
