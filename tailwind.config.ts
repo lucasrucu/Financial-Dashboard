@@ -70,6 +70,10 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // Tailwind v4 ships a `4xl` (2rem) radius; v3 stops at `3xl`. The shared
+        // Qori UI kit (e.g. the Badge pill) uses `rounded-4xl`, so define it here
+        // to match the other apps instead of forking the component.
+        "4xl": "2rem",
       },
     },
   },
