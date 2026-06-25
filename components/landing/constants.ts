@@ -8,4 +8,4 @@ export const REQUEST_ACCESS_HREF = "#request-access";
 
 export const GITHUB_HREF = "https://github.com/lucasrucu/Financial-Dashboard";
 
-export const APP_NAME = "Qori";
+export const APP_NAME = "Financial Dashboard";

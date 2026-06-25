@@ -8,9 +8,9 @@ import { LandingCta } from "@/components/landing/LandingCta";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export const metadata: Metadata = {
-  title: "Qori — Personal finance, unified",
+  title: "Financial Dashboard — Personal finance, unified",
   description:
-    "Qori unifies your US banks, Peruvian bank statements, and brokerage holdings, with AI-powered insights. Multi-currency USD/PEN.",
+    "Financial Dashboard unifies your US banks, Peruvian bank statements, and brokerage holdings, with AI-powered insights. Multi-currency USD/PEN.",
 };
 
 export default function LandingPage() {

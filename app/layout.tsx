@@ -20,8 +20,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Qori",
-  description: "Personal financial dashboard with Plaid and AI insights",
+  metadataBase: new URL("https://finance.qori.land"),
+  title: "Financial Dashboard — Multi-bank personal finance, in one place",
+  description: "Multi-bank personal finance, in one place — with Plaid and AI insights.",
 };
 
 export default function RootLayout({

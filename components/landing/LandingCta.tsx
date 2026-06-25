@@ -13,7 +13,7 @@ export function LandingCta() {
             Request access
           </h2>
           <p className="mx-auto mt-3 mb-8 max-w-xl text-muted-foreground">
-            Qori is invite-only for now. Leave your email and I&apos;ll reach out — or{" "}
+            Financial Dashboard is invite-only for now. Leave your email and I&apos;ll reach out — or{" "}
             <Link href={SIGN_IN_HREF} className="text-primary underline-offset-4 hover:underline">
               sign in
             </Link>{" "}

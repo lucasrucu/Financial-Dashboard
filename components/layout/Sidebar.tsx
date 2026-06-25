@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -20,6 +19,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";
+import { QoriMark } from "@/components/QoriMark";
 import { ThemePicker } from "@/components/layout/ThemePicker";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -135,12 +135,7 @@ export function Sidebar() {
   const navContent = (
     <>
       <div className="border-b border-sidebar-border px-6 py-5">
-        <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="Qori" width={28} height={28} className="size-7" />
-          <p className="text-lg font-semibold tracking-tight text-foreground">
-            Qori
-          </p>
-        </div>
+        <QoriMark glyph="wallet" label="Financial Dashboard" size={28} />
       </div>
 
       <nav className="flex flex-1 flex-col gap-4 p-4">

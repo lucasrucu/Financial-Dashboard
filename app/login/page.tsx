@@ -1,17 +1,16 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { QoriMark } from "@/components/QoriMark";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
 
@@ -47,15 +46,9 @@ function LoginForm() {
   return (
     <Card className="w-full max-w-md border-border bg-card">
       <CardHeader className="items-center text-center">
-        <Image
-          src="/logo.png"
-          alt="Qori"
-          width={56}
-          height={56}
-          className="mx-auto mb-2 size-14"
-          priority
-        />
-        <CardTitle className="text-2xl">Qori</CardTitle>
+        <div className="mb-2 flex justify-center">
+          <QoriMark glyph="wallet" label="Financial Dashboard" size={40} />
+        </div>
         <CardDescription>Sign in to view your finances</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

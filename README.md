@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="public/logo.png" alt="Qori" width="72" height="72" />
+<img src="app/icon.svg" alt="Financial Dashboard" width="72" height="72" />
 
-# Qori
+# Financial Dashboard
 
 **Every account, every currency, one clear picture.**
 
