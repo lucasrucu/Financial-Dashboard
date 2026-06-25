@@ -173,6 +173,7 @@ export function TransactionTable() {
   const [sortBy, setSortBy] = useState<TransactionSortBy>(DEFAULT_SORT_BY);
   const [sortOrder, setSortOrder] =
     useState<TransactionSortOrder>(DEFAULT_SORT_ORDER);
+  const [recurringOnly, setRecurringOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [openColumn, setOpenColumn] = useState<FilterColumn | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -187,19 +188,20 @@ export function TransactionTable() {
       endDate: endDate || undefined,
       sortBy,
       sortOrder,
+      recurringOnly: recurringOnly || undefined,
       page,
       pageSize: PAGE_SIZE,
     }),
-    [search, categoryId, accountId, startDate, endDate, sortBy, sortOrder, page]
+    [search, categoryId, accountId, startDate, endDate, sortBy, sortOrder, recurringOnly, page]
   );
 
   useEffect(() => {
     setPage(1);
-  }, [search, categoryId, accountId, startDate, endDate, sortBy, sortOrder]);
+  }, [search, categoryId, accountId, startDate, endDate, sortBy, sortOrder, recurringOnly]);
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [page, search, categoryId, accountId, startDate, endDate, sortBy, sortOrder]);
+  }, [page, search, categoryId, accountId, startDate, endDate, sortBy, sortOrder, recurringOnly]);
 
   const { data: categories } = useCategories();
   const { data: accounts } = useAccounts();
@@ -263,7 +265,8 @@ export function TransactionTable() {
     categoryId !== "all" ||
     accountId !== "all" ||
     startDate !== "" ||
-    endDate !== "";
+    endDate !== "" ||
+    recurringOnly;
 
   const isDateFilterActive =
     startDate !== "" ||
@@ -287,6 +290,7 @@ export function TransactionTable() {
     setEndDate("");
     setSortBy(DEFAULT_SORT_BY);
     setSortOrder(DEFAULT_SORT_ORDER);
+    setRecurringOnly(false);
   }
 
   function toggleRowSelection(id: string, checked: boolean) {
@@ -345,26 +349,37 @@ export function TransactionTable() {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-md">
-        <Search className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-        <Input
-          className={cn("pl-9", hasClearableFilters && "pr-9")}
-          placeholder="Search description, category, or account..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        {hasClearableFilters ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Clear search and filters"
-            className="absolute top-1/2 right-1 -translate-y-1/2 text-negative hover:bg-muted/50 hover:text-negative/80"
-            onClick={clearFilters}
-          >
-            <X className="size-4" />
-          </Button>
-        ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
+          <Input
+            className={cn("pl-9", hasClearableFilters && "pr-9")}
+            placeholder="Search description, category, or account..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          {hasClearableFilters ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Clear search and filters"
+              className="absolute top-1/2 right-1 -translate-y-1/2 text-negative hover:bg-muted/50 hover:text-negative/80"
+              onClick={clearFilters}
+            >
+              <X className="size-4" />
+            </Button>
+          ) : null}
+        </div>
+        <Button
+          type="button"
+          variant={recurringOnly ? "default" : "outline"}
+          size="sm"
+          aria-pressed={recurringOnly}
+          onClick={() => setRecurringOnly((value) => !value)}
+        >
+          Recurring only
+        </Button>
       </div>
 
       {selectedIds.size > 0 ? (

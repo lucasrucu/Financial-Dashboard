@@ -23,6 +23,12 @@ const ACTION_META: Record<AiPortfolioMove["action"], { label: string; className:
 export function AiInsightPanel() {
   const { insight, isLoading, error, analyze, clearInsight } = useAiInsight();
 
+  // Guard against a malformed/legacy cached payload where allocations isn't an
+  // object before handing it to Object.entries.
+  const allocations = insight?.insight?.allocations;
+  const allocationEntries =
+    allocations && typeof allocations === "object" ? Object.entries(allocations) : [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
@@ -122,12 +128,16 @@ export function AiInsightPanel() {
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
-                {Object.entries(insight.insight.allocations).map(([goal, advice]) => (
-                  <li key={goal} className="rounded-lg bg-background/60 px-3 py-2">
-                    <p className="font-medium">{goal}</p>
-                    <p className="text-muted-foreground">{advice}</p>
-                  </li>
-                ))}
+                {allocationEntries.length ? (
+                  allocationEntries.map(([goal, advice]) => (
+                    <li key={goal} className="rounded-lg bg-background/60 px-3 py-2">
+                      <p className="font-medium">{goal}</p>
+                      <p className="text-muted-foreground">{String(advice)}</p>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-muted-foreground">No goal allocations this period.</li>
+                )}
               </ul>
             </CardContent>
           </Card>
