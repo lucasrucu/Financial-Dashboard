@@ -246,6 +246,13 @@ export async function getBudgetProgress(
   return { progress, summary };
 }
 
+// PostgREST reports a missing table as PGRST205 (schema-cache miss); the
+// underlying Postgres code is 42P01 (undefined_table). Either means the budgets
+// migration hasn't been applied to this database yet.
+function isMissingTableError(error: { code?: string } | null): boolean {
+  return error?.code === "PGRST205" || error?.code === "42P01";
+}
+
 export async function fetchBudgets(
   supabase: SupabaseClient,
   userId: string
@@ -259,6 +266,12 @@ export async function fetchBudgets(
     .order("created_at");
 
   if (error) {
+    // Budgets are an optional add-on. If the table hasn't been migrated yet,
+    // treat it as "no budgets" so the overview's core metrics (net worth,
+    // spending, categories) still load instead of failing as a group.
+    if (isMissingTableError(error)) {
+      return [];
+    }
     throw new Error(error.message);
   }
 

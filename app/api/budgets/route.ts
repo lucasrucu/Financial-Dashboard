@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth";
+import { fetchBudgets } from "@/lib/aggregates";
 import type { BudgetCreatePayload } from "@/types/budget";
 
 export const dynamic = "force-dynamic";
@@ -13,25 +14,11 @@ export async function GET() {
     }
 
     const { supabase, user } = auth;
-    const { data, error } = await supabase
-      .from("budgets")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at");
+    // Reuses fetchBudgets so a not-yet-migrated budgets table degrades to an
+    // empty list here too, matching the overview rather than 500-ing the page.
+    const budgets = await fetchBudgets(supabase, user.id);
 
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return NextResponse.json({
-      budgets: (data ?? []).map((budget) => ({
-        id: budget.id,
-        category: budget.category,
-        amount: Number(budget.amount),
-        period: budget.period,
-        created_at: budget.created_at,
-      })),
-    });
+    return NextResponse.json({ budgets });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to fetch budgets";
     return NextResponse.json({ error: message }, { status: 500 });
