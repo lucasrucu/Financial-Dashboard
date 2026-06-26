@@ -13,12 +13,14 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
+    const rawHistoryMonths = Number(searchParams.get("historyMonths") ?? "6");
     const historyMonths = Math.min(
-      Math.max(Number(searchParams.get("historyMonths") ?? "6"), 3),
+      Math.max(Number.isFinite(rawHistoryMonths) ? rawHistoryMonths : 6, 3),
       12
     );
+    const rawProjectionMonths = Number(searchParams.get("projectionMonths") ?? "3");
     const projectionMonths = Math.min(
-      Math.max(Number(searchParams.get("projectionMonths") ?? "3"), 1),
+      Math.max(Number.isFinite(rawProjectionMonths) ? rawProjectionMonths : 3, 1),
       6
     );
 

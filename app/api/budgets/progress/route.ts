@@ -13,7 +13,8 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const monthOffset = Number(searchParams.get("monthOffset") ?? "0");
+    const rawMonthOffset = Number(searchParams.get("monthOffset") ?? "0");
+    const monthOffset = Number.isFinite(rawMonthOffset) ? rawMonthOffset : 0;
 
     const { supabase, user } = auth;
     const result = await getBudgetProgress(supabase, user.id, monthOffset);

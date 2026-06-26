@@ -47,7 +47,7 @@ export async function PATCH(
       .eq("user_id", auth.user.id)
       .eq("id", id)
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.code === "23505") {
@@ -57,6 +57,10 @@ export async function PATCH(
         );
       }
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: "Budget not found" }, { status: 404 });
     }
 
     return NextResponse.json({
