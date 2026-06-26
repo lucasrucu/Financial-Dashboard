@@ -158,6 +158,21 @@ create table if not exists goals (
 
 create index if not exists goals_user_idx on goals (user_id);
 
+-- ─── Budgets ──────────────────────────────────────────────────────────────────
+-- Per-category monthly spending limits. One budget per category per user.
+
+create table if not exists budgets (
+  id         uuid        primary key default gen_random_uuid(),
+  user_id    uuid        not null references auth.users(id) on delete cascade,
+  category   text        not null,
+  amount     numeric     not null,
+  period     text        not null default 'monthly',
+  created_at timestamptz not null default now()
+);
+
+create index if not exists budgets_user_idx on budgets (user_id);
+create unique index if not exists budgets_user_category_idx on budgets (user_id, category);
+
 -- ─── AI Cache ─────────────────────────────────────────────────────────────────
 
 create table if not exists ai_cache (
@@ -188,6 +203,7 @@ alter table statement_imports   enable row level security;
 alter table portfolio_snapshots enable row level security;
 alter table stock_positions     enable row level security;
 alter table goals               enable row level security;
+alter table budgets             enable row level security;
 alter table ai_cache            enable row level security;
 alter table exchange_rates      enable row level security;
 
@@ -270,6 +286,16 @@ drop policy if exists "goals_update_own" on goals;
 create policy "goals_update_own" on goals for update using (auth.uid() = user_id);
 drop policy if exists "goals_delete_own" on goals;
 create policy "goals_delete_own" on goals for delete using (auth.uid() = user_id);
+
+-- Budgets
+drop policy if exists "budgets_select_own" on budgets;
+create policy "budgets_select_own" on budgets for select using (auth.uid() = user_id);
+drop policy if exists "budgets_insert_own" on budgets;
+create policy "budgets_insert_own" on budgets for insert with check (auth.uid() = user_id);
+drop policy if exists "budgets_update_own" on budgets;
+create policy "budgets_update_own" on budgets for update using (auth.uid() = user_id);
+drop policy if exists "budgets_delete_own" on budgets;
+create policy "budgets_delete_own" on budgets for delete using (auth.uid() = user_id);
 
 -- AI cache
 drop policy if exists "ai_cache_select_own" on ai_cache;
