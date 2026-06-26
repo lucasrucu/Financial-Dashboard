@@ -6,6 +6,7 @@ import {
   FolderOpen,
   LayoutDashboard,
   LogOut,
+  PiggyBank,
   Receipt,
   Sparkles,
   Menu,
@@ -43,6 +44,7 @@ const navSections: NavSection[] = [
   {
     section: "Plan",
     items: [
+      { href: "/budgets", label: "Budgets", icon: PiggyBank },
       { href: "/goals", label: "Goals", icon: Target },
       { href: "/insights", label: "Insights", icon: Sparkles },
     ],
@@ -108,6 +110,19 @@ function prefetchRoute(queryClient: ReturnType<typeof useQueryClient>, href: str
           fetch("/api/categories")
             .then((r) => r.json())
             .then((d: { categories: unknown[] }) => d.categories),
+      });
+      break;
+    case "/budgets":
+      void queryClient.prefetchQuery({
+        queryKey: ["budget-progress", 0],
+        queryFn: () =>
+          fetch("/api/budgets/progress?monthOffset=0")
+            .then((r) => {
+              if (!r.ok) {
+                throw new Error("Failed to fetch budget progress");
+              }
+              return r.json();
+            }),
       });
       break;
     case "/goals":

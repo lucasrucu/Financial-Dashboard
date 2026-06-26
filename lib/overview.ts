@@ -29,6 +29,10 @@ export interface OverviewStats {
     spending: number;
     net: number;
   };
+  budgetSummary: {
+    totalBudgets: number;
+    overLimitCount: number;
+  };
 }
 
 export function formatMonthLabel(monthOffset = 0) {
