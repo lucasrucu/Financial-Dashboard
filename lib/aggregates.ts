@@ -11,6 +11,8 @@ import {
 import { getEffectiveBalancesForAccounts } from "@/lib/accountBalance";
 import { EXCLUDED_FROM_TOTALS_CATEGORY_IDS } from "@/constants/categories";
 import type { AiAnalysisPayload, AiPortfolioPosition } from "@/types/ai";
+import type { Budget, BudgetProgress, BudgetSummary } from "@/types/budget";
+import type { ForecastData, ForecastPoint } from "@/types/forecast";
 import type { Goal } from "@/types/goal";
 import type { Transaction } from "@/types/transaction";
 
@@ -129,13 +131,19 @@ export async function getOverviewData(
   const currentRange = getMonthRange(monthOffset);
   const previousRange = getMonthRange(monthOffset - 1);
 
-  const [currentTransactions, previousTransactions, categories, effectiveBalances] =
-    await Promise.all([
-      fetchTransactionsInRange(supabase, userId, currentRange.start, currentRange.end),
-      fetchTransactionsInRange(supabase, userId, previousRange.start, previousRange.end),
-      ensureDefaultCategories(supabase, userId),
-      getEffectiveBalancesForAccounts(supabase, userId),
-    ]);
+  const [
+    currentTransactions,
+    previousTransactions,
+    categories,
+    effectiveBalances,
+    budgets,
+  ] = await Promise.all([
+    fetchTransactionsInRange(supabase, userId, currentRange.start, currentRange.end),
+    fetchTransactionsInRange(supabase, userId, previousRange.start, previousRange.end),
+    ensureDefaultCategories(supabase, userId),
+    getEffectiveBalancesForAccounts(supabase, userId),
+    fetchBudgets(supabase, userId),
+  ]);
 
   const categoryMap = buildCategoryMap(categories);
 
@@ -154,6 +162,18 @@ export async function getOverviewData(
   const spendingTotals = computeCategoryTotals(currentTransactions, categoryMap, "spending");
   const incomeTotals = computeCategoryTotals(currentTransactions, categoryMap, "income");
 
+  // Budget summary derived from the same in-memory spending totals — no extra
+  // per-category fetch. Counts how many budgets the current month exceeds.
+  const spendingByCategory = new Map<string, number>(
+    spendingTotals.map((total) => [total.categoryId, total.amount])
+  );
+  const budgetSummary: BudgetSummary = {
+    totalBudgets: budgets.length,
+    overLimitCount: budgets.filter(
+      (budget) => (spendingByCategory.get(budget.category) ?? 0) > Number(budget.amount)
+    ).length,
+  };
+
   return {
     netWorth,
     spendingComparison: {
@@ -170,6 +190,239 @@ export async function getOverviewData(
       spending: currentSpending,
       net: monthlyIncome - currentSpending,
     },
+    budgetSummary,
+  };
+}
+
+// Spend-vs-budget for the current month. Fetches this month's transactions once
+// (same pattern as getOverviewData) plus the user's budgets and categories, then
+// derives per-category spend and compares it against each budget in-memory.
+export async function getBudgetProgress(
+  supabase: SupabaseClient,
+  userId: string,
+  monthOffset = 0
+): Promise<{ progress: BudgetProgress[]; summary: BudgetSummary }> {
+  const range = getMonthRange(monthOffset);
+
+  const [transactions, categories, budgets] = await Promise.all([
+    fetchTransactionsInRange(supabase, userId, range.start, range.end),
+    ensureDefaultCategories(supabase, userId),
+    fetchBudgets(supabase, userId),
+  ]);
+
+  const categoryMap = buildCategoryMap(categories);
+
+  const spendingByCategory = new Map<string, number>();
+  for (const total of computeCategoryTotals(transactions, categoryMap, "spending")) {
+    spendingByCategory.set(total.categoryId, total.amount);
+  }
+
+  const progress: BudgetProgress[] = budgets
+    .map((budget) => {
+      const spent = spendingByCategory.get(budget.category) ?? 0;
+      const limit = Number(budget.amount);
+      const remaining = limit - spent;
+      const percentUsed = limit === 0 ? 0 : (spent / limit) * 100;
+
+      return {
+        budgetId: budget.id,
+        categoryId: budget.category,
+        label: resolveCategoryLabel(budget.category, categoryMap),
+        color: resolveCategoryColor(budget.category, categoryMap),
+        amount: limit,
+        spent,
+        remaining,
+        percentUsed,
+        overBudget: spent > limit,
+      };
+    })
+    .sort((a, b) => b.percentUsed - a.percentUsed);
+
+  const summary: BudgetSummary = {
+    totalBudgets: progress.length,
+    overLimitCount: progress.filter((item) => item.overBudget).length,
+  };
+
+  return { progress, summary };
+}
+
+// PostgREST reports a missing table as PGRST205 (schema-cache miss); the
+// underlying Postgres code is 42P01 (undefined_table). Either means the budgets
+// migration hasn't been applied to this database yet.
+function isMissingTableError(error: { code?: string } | null): boolean {
+  return error?.code === "PGRST205" || error?.code === "42P01";
+}
+
+export async function fetchBudgets(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<Budget[]> {
+  // RLS scopes this to the session user; the explicit user_id filter is
+  // defense-in-depth, matching fetchTransactionsInRange.
+  const { data, error } = await supabase
+    .from("budgets")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at");
+
+  if (error) {
+    // Budgets are an optional add-on. If the table hasn't been migrated yet,
+    // treat it as "no budgets" so the overview's core metrics (net worth,
+    // spending, categories) still load instead of failing as a group.
+    if (isMissingTableError(error)) {
+      return [];
+    }
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((budget) => ({
+    id: budget.id,
+    category: budget.category,
+    amount: Number(budget.amount),
+    period: budget.period,
+    created_at: budget.created_at,
+  }));
+}
+
+const MIN_FORECAST_HISTORY = 3;
+
+// Least-squares linear regression over an evenly-spaced series. x is the index
+// (0..n-1). Returns slope + intercept so future points are intercept + slope * x.
+function linearRegression(values: number[]): { slope: number; intercept: number } {
+  const n = values.length;
+  if (n === 0) return { slope: 0, intercept: 0 };
+  if (n === 1) return { slope: 0, intercept: values[0] };
+
+  const sumX = (n * (n - 1)) / 2;
+  const sumXX = ((n - 1) * n * (2 * n - 1)) / 6;
+  let sumY = 0;
+  let sumXY = 0;
+  for (let i = 0; i < n; i += 1) {
+    sumY += values[i];
+    sumXY += i * values[i];
+  }
+
+  const denominator = n * sumXX - sumX * sumX;
+  if (denominator === 0) {
+    return { slope: 0, intercept: sumY / n };
+  }
+
+  const slope = (n * sumXY - sumX * sumY) / denominator;
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function monthKeyFromOffset(monthOffset: number) {
+  const now = new Date();
+  const date = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return {
+    key: `${year}-${month}`,
+    label: date.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+  };
+}
+
+// Pulls the trailing `historyMonths` of revenue (income) and net profit, then
+// projects `projectionMonths` ahead via least-squares linear regression. Each
+// historical month is fetched exactly once (in parallel) — no N+1 per metric.
+export async function getForecastData(
+  supabase: SupabaseClient,
+  userId: string,
+  historyMonths = 6,
+  projectionMonths = 3
+): Promise<ForecastData> {
+  // Build the trailing month ranges (oldest first), ending with the current month.
+  const offsets: number[] = [];
+  for (let i = historyMonths - 1; i >= 0; i -= 1) {
+    offsets.push(-i);
+  }
+
+  const monthlyTransactions = await Promise.all(
+    offsets.map((offset) => {
+      const range = getMonthRange(offset);
+      return fetchTransactionsInRange(supabase, userId, range.start, range.end);
+    })
+  );
+
+  const revenueSeries: number[] = [];
+  const netSeries: number[] = [];
+  const historicalPoints: ForecastPoint[] = [];
+
+  offsets.forEach((offset, index) => {
+    const transactions = monthlyTransactions[index];
+    const revenue = sumIncome(transactions);
+    const spending = sumSpending(transactions);
+    const net = revenue - spending;
+    revenueSeries.push(revenue);
+    netSeries.push(net);
+
+    const { key, label } = monthKeyFromOffset(offset);
+    historicalPoints.push({
+      month: key,
+      label,
+      revenue,
+      netProfit: net,
+      projectedRevenue: null,
+      projectedNetProfit: null,
+    });
+  });
+
+  // A month with no transactions yet (e.g. the current month early on) reads as 0
+  // and would drag the regression down. Drop leading/trailing all-zero months so
+  // the trend reflects real activity, but keep interior months as legitimate data.
+  const nonZeroIndex = revenueSeries.findIndex(
+    (value, i) => value !== 0 || netSeries[i] !== 0
+  );
+  const hasAnyData = nonZeroIndex !== -1;
+  const effectiveHistoryCount = hasAnyData
+    ? revenueSeries.length - nonZeroIndex
+    : 0;
+
+  const hasEnoughData = effectiveHistoryCount >= MIN_FORECAST_HISTORY;
+
+  if (!hasEnoughData) {
+    return {
+      points: historicalPoints,
+      historyMonths: effectiveHistoryCount,
+      projectionMonths,
+      hasEnoughData: false,
+      method: "linear-regression",
+    };
+  }
+
+  const trimmedRevenue = revenueSeries.slice(nonZeroIndex);
+  const trimmedNet = netSeries.slice(nonZeroIndex);
+
+  const revenueFit = linearRegression(trimmedRevenue);
+  const netFit = linearRegression(trimmedNet);
+
+  // The last historical point doubles as the seam: give it projected values equal
+  // to its actuals so the dashed projection line connects to the solid history.
+  const lastHistorical = historicalPoints[historicalPoints.length - 1];
+  lastHistorical.projectedRevenue = lastHistorical.revenue;
+  lastHistorical.projectedNetProfit = lastHistorical.netProfit;
+
+  const projectionPoints: ForecastPoint[] = [];
+  for (let step = 1; step <= projectionMonths; step += 1) {
+    const x = trimmedRevenue.length - 1 + step;
+    const { key, label } = monthKeyFromOffset(step);
+    projectionPoints.push({
+      month: key,
+      label,
+      revenue: null,
+      netProfit: null,
+      projectedRevenue: Math.max(0, revenueFit.intercept + revenueFit.slope * x),
+      projectedNetProfit: netFit.intercept + netFit.slope * x,
+    });
+  }
+
+  return {
+    points: [...historicalPoints, ...projectionPoints],
+    historyMonths: effectiveHistoryCount,
+    projectionMonths,
+    hasEnoughData: true,
+    method: "linear-regression",
   };
 }
 

@@ -39,6 +39,11 @@ const IncomeVsSpendingChart = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-72 w-full rounded-lg" /> }
 );
 
+const ForecastChart = dynamic(
+  () => import("@/components/dashboard/ForecastChart").then((m) => m.ForecastChart),
+  { ssr: false, loading: () => <Skeleton className="h-72 w-full rounded-lg" /> }
+);
+
 const EMPTY_OVERVIEW: OverviewStats = {
   netWorth: 0,
   spendingComparison: {
@@ -51,6 +56,7 @@ const EMPTY_OVERVIEW: OverviewStats = {
   categoryBreakdown: [],
   incomeBreakdown: [],
   monthlySummary: { income: 0, spending: 0, net: 0 },
+  budgetSummary: { totalBudgets: 0, overLimitCount: 0 },
 };
 
 export function OverviewContent() {
@@ -190,11 +196,41 @@ export function OverviewContent() {
         </CardContent>
       </Card>
 
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle>Budgets</CardTitle>
+          <CardDescription>Category limits for this month</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          {isLoading ? (
+            <Skeleton className="h-6 w-48" />
+          ) : overview.budgetSummary.totalBudgets === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No budgets set yet. Add category limits to track spending.
+            </p>
+          ) : overview.budgetSummary.overLimitCount > 0 ? (
+            <p className="text-sm font-medium text-negative">
+              {overview.budgetSummary.overLimitCount} of{" "}
+              {overview.budgetSummary.totalBudgets} budgets over limit
+            </p>
+          ) : (
+            <p className="text-sm font-medium text-positive">
+              All {overview.budgetSummary.totalBudgets} budgets within limit
+            </p>
+          )}
+          <Link href="/budgets" className="text-sm text-primary hover:underline">
+            Manage budgets
+          </Link>
+        </CardContent>
+      </Card>
+
       <IncomeVsSpendingChart
         income={overview.monthlySummary.income}
         spending={overview.monthlySummary.spending}
         monthLabel={monthLabel}
       />
+
+      <ForecastChart />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SpendingChart data={overview.categoryBreakdown} />
