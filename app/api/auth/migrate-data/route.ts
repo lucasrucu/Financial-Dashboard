@@ -19,6 +19,12 @@ export async function POST() {
     return auth.unauthorized;
   }
 
+  const ownerId = process.env.MIGRATE_DATA_OWNER_USER_ID;
+
+  if (!ownerId || auth.user.id !== ownerId) {
+    return NextResponse.json({ error: "not authorized" }, { status: 403 });
+  }
+
   const userId = auth.user.id;
   const admin = getSupabaseAdmin();
   let migrated = 0;

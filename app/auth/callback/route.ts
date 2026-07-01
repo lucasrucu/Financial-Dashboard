@@ -32,17 +32,6 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // fire-and-forget — migration is best-effort, don't block login
-      void fetch(`${origin}/api/auth/migrate-data`, {
-        method: "POST",
-        headers: {
-          cookie: cookieStore
-            .getAll()
-            .map(({ name, value }) => `${name}=${value}`)
-            .join("; "),
-        },
-      });
-
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
